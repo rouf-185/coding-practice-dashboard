@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CodingFlashcard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header">
+        <h1>CodingFlashcard</h1>
+        <div class="header-actions">
+            <nav class="main-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Practice</a>
+                <a href="{{ url_for('all_problems') }}" class="nav-link {% if request.endpoint == 'all_problems' %}active{% endif %}">All Problems</a>
+            </nav>
+            <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
+            <div class="user-info">
+                <span>{{ user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-content">
+        <!-- Top Section: Stats and Chart -->
+        <div class="dashboard-top-section">
+            <!-- Left: Practice Statistics (2x2x2 layout) -->
+            <div class="stats-container-new">
+                <div class="stats-row">
+                    <div class="stats-card">
+                        <div class="stat-icon">✓</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.fully_practiced }}</div>
+                            <div class="stat-label">100% Practiced<br><span class="stat-sublabel">(≥3 times)</span></div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-icon">◐</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.partially_practiced }}</div>
+                            <div class="stat-label">Partially Practiced<br><span class="stat-sublabel">(2 times)</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-card">
+                        <div class="stat-icon">○</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.solved_once }}</div>
+                            <div class="stat-label">Solved Once<br><span class="stat-sublabel">(1 time)</span></div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-icon">—</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.not_practiced }}</div>
+                            <div class="stat-label">Not Practiced<br><span class="stat-sublabel">(0 times)</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.practiced_today }}</div>
+                            <div class="stat-label">Practiced Today<br><span class="stat-sublabel">(Today)</span></div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-icon">📆</div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ stats.practiced_yesterday }}</div>
+                            <div class="stat-label">Practiced Yesterday<br><span class="stat-sublabel">(Yesterday)</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Practice Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>Problems Solved This Month</h2>
+                    <div class="chart-controls">
+                        <select id="yearSelect" class="chart-select">
+                            {% set current_year = now.year %}
+                            {% for year in range(current_year - 2, current_year + 1) %}
+                                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="monthSelect" class="chart-select">
+                            {% set current_month = now.month %}
+                            {% set months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+                            {% for month_num in range(1, 13) %}
+                                <option value="{{ month_num }}" {% if month_num == current_month %}selected{% endif %}>{{ months[month_num - 1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <canvas id="practiceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Problems to Practice Today -->
+        <div class="practice-problems-section">
+            <h2 class="section-title">Problems to Practice Today</h2>
+            {% if grouped_problems %}
+                <div class="problems-container">
+                    {% for category, problems in grouped_problems.items() %}
+                        <div class="problem-category">
+                            <h3 class="category-title">{{ category }}</h3>
+                            <div class="problem-list">
+                                {% for item in problems %}
+                                    {% set problem = item.problem %}
+                                    {% set solved_recently = item.solved_recently %}
+                                    <div class="problem-card {% if problem.last_practiced %}solved{% endif %}">
+                                        <div class="problem-header">
+                                            <h3 class="problem-title">
+                                                {{ problem.title }}
+                                                {% if solved_recently %}
+                                                    <span class="solved-badge">✓ Solved</span>
+                                                {% endif %}
+                                            </h3>
+                                            <span class="difficulty-badge difficulty-{{ problem.difficulty }}">
+                                                {{ problem.difficulty.upper() }}
+                                            </span>
+                                        </div>
+                                        <div class="problem-actions">
+                                            <a href="{{ problem.leetcode_url }}" target="_blank" rel="noopener noreferrer" class="btn-leetcode">
+                                                View on Leetcode
+                                            </a>
+                                            <button onclick="viewHistory({{ problem.id }})" class="btn-history">View History</button>
+                                            <form method="POST" action="{{ url_for('mark_done', problem_id=problem.id) }}" style="display: inline;">
+                                                <button type="submit" class="btn-done">Done</button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" onsubmit="return confirmDelete('{{ problem.title }}');">
+                                                <button type="submit" class="btn-delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <h2>No problems to practice today!</h2>
+                    <p>Add a problem to get started with your spaced repetition practice.</p>
+                    <button onclick="openModal()" class="btn-primary">Add Your First Problem</button>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<!-- Add Problem Modal -->
+<div id="addProblemModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Add Problem</h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_problem') }}">
+            <div class="form-group">
+                <label for="leetcode_url">Leetcode Problem URL</label>
+                <input type="url" id="leetcode_url" name="leetcode_url" 
+                       placeholder="https://leetcode.com/problems/four-divisors/description/" required>
+            </div>
+            <div class="form-group">
+                <label for="difficulty">Difficulty</label>
+                <select id="difficulty" name="difficulty" class="difficulty-select" required onchange="updateSelectColor(this)">
+                    <option value="">Select difficulty...</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Add Problem</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div id="historyModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="historyModalTitle">Problem History</h2>
+            <button class="modal-close" onclick="closeHistoryModal()">×</button>
+        </div>
+        <div class="history-content">
+            <div class="history-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Added:</span>
+                    <span class="stat-value" id="historyCreatedAt">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Practice Sessions:</span>
+                    <span class="stat-value" id="historyTotalSessions">-</span>
+                </div>
+            </div>
+            <div class="history-list-container">
+                <h3>Practice History</h3>
+                <div id="historyList" class="history-list">
+                    <!-- History items will be inserted here -->
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeHistoryModal()" class="btn-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('addProblemModal').style.display = 'flex';
+    // Reset difficulty select color when opening modal
+    const difficultySelect = document.getElementById('difficulty');
+    if (difficultySelect) {
+        difficultySelect.value = '';
+        updateSelectColor(difficultySelect);
+    }
+}
+
+function closeModal() {
+    document.getElementById('addProblemModal').style.display = 'none';
+}
+
+function updateSelectColor(select) {
+    const value = select.value;
+    // Remove all color classes
+    select.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+    
+    // Reset to default if no value selected
+    if (!value) {
+        select.style.backgroundColor = '#ffffff';
+        select.style.color = '#000000';
+        select.style.borderColor = '#000000';
+        return;
+    }
+    
+    // Apply color class based on selection
+    if (value === 'easy') {
+        select.classList.add('difficulty-easy');
+    } else if (value === 'medium') {
+        select.classList.add('difficulty-medium');
+    } else if (value === 'hard') {
+        select.classList.add('difficulty-hard');
+    }
+}
+
+function viewHistory(problemId) {
+    fetch(`/problem-history/${problemId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('historyModalTitle').textContent = data.title + ' - History';
+            document.getElementById('historyCreatedAt').textContent = data.created_at;
+            document.getElementById('historyTotalSessions').textContent = data.total_sessions;
+            
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (data.history.length === 0) {
+                historyList.innerHTML = '<p class="no-history">No practice history yet.</p>';
+            } else {
+                data.history.forEach((entry, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <span class="history-number">${index + 1}</span>
+                        <span class="history-date">${entry.date}</span>
+                        <span class="history-time">${entry.time}</span>
+                    `;
+                    historyList.appendChild(item);
+                });
+            }
+            
+            document.getElementById('historyModal').style.display = 'flex';
+        })
+        .catch(error => {
+            console.error('Error fetching history:', error);
+            alert('Failed to load problem history.');
+        });
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').style.display = 'none';
+}
+
+function confirmDelete(problemTitle) {
+    return confirm(`Are you sure you want to delete "${problemTitle}"? This action cannot be undone.`);
+}
+
+// Close modal when clicking outside
+document.getElementById('addProblemModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+document.getElementById('historyModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeHistoryModal();
+    }
+});
+
+// Chart functionality
+let practiceChart = null;
+
+function loadChartData(year, month) {
+    fetch(`/api/practice-data?year=${year}&month=${month}`)
+        .then(response => response.json())
+        .then(data => {
+            updateChart(data);
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+        });
+}
+
+function updateChart(data) {
+    const ctx = document.getElementById('practiceChart');
+    if (!ctx) return;
+    
+    const chartCtx = ctx.getContext('2d');
+    
+    if (practiceChart) {
+        practiceChart.destroy();
+    }
+    
+    practiceChart = new Chart(chartCtx, {
+        type: 'bar',
+        data: {
+            labels: data.days.map(day => day.toString()),
+            datasets: [{
+                label: 'Problems Solved',
+                data: data.counts,
+                backgroundColor: '#000000',
+                borderColor: '#000000',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        color: '#000000'
+                    },
+                    grid: {
+                        color: '#e0e0e0'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#000000'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize chart on page load
+const yearSelect = document.getElementById('yearSelect');
+const monthSelect = document.getElementById('monthSelect');
+
+if (yearSelect && monthSelect) {
+    // Load initial chart data
+    loadChartData(yearSelect.value, monthSelect.value);
+    
+    // Update chart when year or month changes
+    yearSelect.addEventListener('change', function() {
+        loadChartData(yearSelect.value, monthSelect.value);
+    });
+    
+    monthSelect.addEventListener('change', function() {
+        loadChartData(yearSelect.value, monthSelect.value);
+    });
+}
+</script>
+{% endblock %}
+

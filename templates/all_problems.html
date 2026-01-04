@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}All Problems - CodingFlashcard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header">
+        <h1>CodingFlashcard</h1>
+        <div class="header-actions">
+            <nav class="main-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Practice</a>
+                <a href="{{ url_for('all_problems') }}" class="nav-link {% if request.endpoint == 'all_problems' %}active{% endif %}">All Problems</a>
+            </nav>
+            <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
+            <div class="user-info">
+                <span>{{ user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-content">
+        <div class="page-header">
+            <h2>All Problems</h2>
+            <p class="page-subtitle">Total: {{ pagination.total }} problem{{ 's' if pagination.total != 1 else '' }}</p>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-container">
+            <form method="GET" action="{{ url_for('all_problems') }}" class="search-form">
+                <input type="text" 
+                       name="search" 
+                       placeholder="Search by title, URL, or difficulty..." 
+                       value="{{ search_query }}"
+                       class="search-input">
+                <button type="submit" class="btn-search">Search</button>
+                {% if search_query %}
+                    <a href="{{ url_for('all_problems') }}" class="btn-clear-search">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if problems %}
+            <div class="problems-container">
+                <div class="problem-category">
+                    <div class="problem-list">
+                        {% for item in problems %}
+                            {% set problem = item.problem %}
+                            {% set solved_recently = item.solved_recently %}
+                            <div class="problem-card compact {% if problem.last_practiced %}solved{% endif %}">
+                                <div class="problem-header-compact">
+                                    <div class="problem-title-section">
+                                        <h3 class="problem-title-compact">{{ problem.title }}</h3>
+                                        <div class="problem-meta-compact">
+                                            <span class="meta-item-compact">Added: {{ problem.created_at.strftime('%Y-%m-%d') }}</span>
+                                            {% if problem.last_practiced %}
+                                                <span class="meta-item-compact">• Last: {{ problem.last_practiced.strftime('%Y-%m-%d') }}</span>
+                                            {% else %}
+                                                <span class="meta-item-compact">• Not practiced</span>
+                                            {% endif %}
+                                            <span class="meta-item-compact">• {{ problem.practice_count }}x practiced</span>
+                                        </div>
+                                    </div>
+                                    <div class="problem-badges-compact">
+                                        <span class="difficulty-badge difficulty-{{ problem.difficulty }}">
+                                            {{ problem.difficulty.upper() }}
+                                        </span>
+                                        {% if solved_recently %}
+                                            <span class="solved-badge-compact">✓</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="problem-actions-compact">
+                                    <a href="{{ problem.leetcode_url }}" target="_blank" rel="noopener noreferrer" class="btn-compact btn-leetcode-compact">
+                                        Leetcode
+                                    </a>
+                                    <button onclick="viewHistory({{ problem.id }})" class="btn-compact btn-history-compact">History</button>
+                                    <form method="POST" action="{{ url_for('mark_done', problem_id=problem.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn-compact btn-done-compact">Done</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" onsubmit="return confirmDelete('{{ problem.title }}');">
+                                        <button type="submit" class="btn-compact btn-delete-compact">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+                <div class="pagination-container">
+                    <div class="pagination">
+                        {% if pagination.has_prev %}
+                            <a href="{{ url_for('all_problems', page=pagination.prev_num, search=search_query) }}" class="pagination-link">« Previous</a>
+                        {% else %}
+                            <span class="pagination-link disabled">« Previous</span>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                {% if page_num == pagination.page %}
+                                    <span class="pagination-link active">{{ page_num }}</span>
+                                {% else %}
+                                    <a href="{{ url_for('all_problems', page=page_num, search=search_query) }}" class="pagination-link">{{ page_num }}</a>
+                                {% endif %}
+                            {% else %}
+                                <span class="pagination-ellipsis">...</span>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                            <a href="{{ url_for('all_problems', page=pagination.next_num, search=search_query) }}" class="pagination-link">Next »</a>
+                        {% else %}
+                            <span class="pagination-link disabled">Next »</span>
+                        {% endif %}
+                    </div>
+                    <div class="pagination-info">
+                        Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} to {{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }} of {{ pagination.total }} problems
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                {% if search_query %}
+                    <h2>No problems found!</h2>
+                    <p>No problems match your search query "{{ search_query }}".</p>
+                    <a href="{{ url_for('all_problems') }}" class="btn-primary">View All Problems</a>
+                {% else %}
+                    <h2>No problems added yet!</h2>
+                    <p>Add a problem to get started with your spaced repetition practice.</p>
+                    <button onclick="openModal()" class="btn-primary">
+                        Add Your First Problem
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </main>
+
+</div>
+
+<!-- Add Problem Modal -->
+<div id="addProblemModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Add Problem</h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <form method="POST" action="{{ url_for('add_problem') }}">
+            <div class="form-group">
+                <label for="leetcode_url">Leetcode Problem URL</label>
+                <input type="url" id="leetcode_url" name="leetcode_url" 
+                       placeholder="https://leetcode.com/problems/four-divisors/description/" required>
+            </div>
+            <div class="form-group">
+                <label for="difficulty">Difficulty</label>
+                <select id="difficulty" name="difficulty" class="difficulty-select" required onchange="updateSelectColor(this)">
+                    <option value="">Select difficulty...</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Add Problem</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div id="historyModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="historyModalTitle">Problem History</h2>
+            <button class="modal-close" onclick="closeHistoryModal()">×</button>
+        </div>
+        <div class="history-content">
+            <div class="history-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Added:</span>
+                    <span class="stat-value" id="historyCreatedAt">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Practice Sessions:</span>
+                    <span class="stat-value" id="historyTotalSessions">-</span>
+                </div>
+            </div>
+            <div class="history-list-container">
+                <h3>Practice History</h3>
+                <div id="historyList" class="history-list">
+                    <!-- History items will be inserted here -->
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeHistoryModal()" class="btn-secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('addProblemModal').style.display = 'flex';
+    // Reset difficulty select color when opening modal
+    const difficultySelect = document.getElementById('difficulty');
+    if (difficultySelect) {
+        difficultySelect.value = '';
+        updateSelectColor(difficultySelect);
+    }
+}
+
+function closeModal() {
+    document.getElementById('addProblemModal').style.display = 'none';
+}
+
+function updateSelectColor(select) {
+    const value = select.value;
+    // Remove all color classes
+    select.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+    
+    // Reset to default if no value selected
+    if (!value) {
+        select.style.backgroundColor = '#ffffff';
+        select.style.color = '#000000';
+        select.style.borderColor = '#000000';
+        return;
+    }
+    
+    // Apply color class based on selection
+    if (value === 'easy') {
+        select.classList.add('difficulty-easy');
+    } else if (value === 'medium') {
+        select.classList.add('difficulty-medium');
+    } else if (value === 'hard') {
+        select.classList.add('difficulty-hard');
+    }
+}
+
+function viewHistory(problemId) {
+    fetch(`/problem-history/${problemId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('historyModalTitle').textContent = data.title + ' - History';
+            document.getElementById('historyCreatedAt').textContent = data.created_at;
+            document.getElementById('historyTotalSessions').textContent = data.total_sessions;
+            
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (data.history.length === 0) {
+                historyList.innerHTML = '<p class="no-history">No practice history yet.</p>';
+            } else {
+                data.history.forEach((entry, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <span class="history-number">${index + 1}</span>
+                        <span class="history-date">${entry.date}</span>
+                        <span class="history-time">${entry.time}</span>
+                    `;
+                    historyList.appendChild(item);
+                });
+            }
+            
+            document.getElementById('historyModal').style.display = 'flex';
+        })
+        .catch(error => {
+            console.error('Error fetching history:', error);
+            alert('Failed to load problem history.');
+        });
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+document.getElementById('addProblemModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+document.getElementById('historyModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeHistoryModal();
+    }
+});
+
+function confirmDelete(problemTitle) {
+    return confirm(`Are you sure you want to delete "${problemTitle}"? This action cannot be undone.`);
+}
+</script>
+{% endblock %}
+
