@@ -12,6 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from models import db, User, Problem, PasswordResetToken, ProblemHistory, EmailChangeRequest
 from utils import scrape_leetcode_problem
 from PIL import Image, ImageOps
+try:
+    from zoneinfo import available_timezones
+except Exception:  # pragma: no cover
+    available_timezones = None
 
 load_dotenv()
 
@@ -360,7 +364,8 @@ def settings():
         db.session.commit()
         pending = None
 
-    return render_template('settings.html', user=user, pending_email_change=pending)
+    tzs = sorted(available_timezones()) if available_timezones else ['UTC']
+    return render_template('settings.html', user=user, pending_email_change=pending, timezones=tzs)
 
 
 @app.route('/settings/username', methods=['POST'])
@@ -396,6 +401,28 @@ def update_username():
 
     session['username'] = user.username
     flash('Username updated.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/timezone', methods=['POST'])
+@require_login
+def update_timezone():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    tz = (request.form.get('timezone') or '').strip()
+    tzs = set(available_timezones()) if available_timezones else {'UTC'}
+    if not tz or tz not in tzs:
+        flash('Please select a valid timezone.', 'error')
+        return redirect(url_for('settings'))
+
+    user.timezone = tz
+    db.session.commit()
+    flash('Timezone updated.', 'success')
     return redirect(url_for('settings'))
 
 
@@ -1002,6 +1029,11 @@ def migrate_database():
                     conn.execute(db.text('ALTER TABLE users ADD COLUMN profile_image TEXT'))
                     conn.commit()
                 print("Added profile_image column to users table")
+            if 'timezone' not in user_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE users ADD COLUMN timezone TEXT DEFAULT 'UTC'"))
+                    conn.commit()
+                print("Added timezone column to users table")
 
         if 'problems' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('problems')]

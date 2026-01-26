@@ -71,6 +71,30 @@
                 </div>
 
                 <div class="settings-card">
+                    <h3>Timezone</h3>
+                    <p class="settings-help">Select your timezone (type to search).</p>
+                    <form method="POST" action="{{ url_for('update_timezone') }}">
+                        <div class="form-group">
+                            <label for="timezone">Timezone</label>
+                            <input
+                                id="timezone"
+                                name="timezone"
+                                list="timezoneList"
+                                value="{{ user.timezone or 'UTC' }}"
+                                placeholder="Start typing, e.g. Asia/Dhaka"
+                                required
+                            >
+                            <datalist id="timezoneList">
+                                {% for tz in timezones %}
+                                    <option value="{{ tz }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <button type="submit" class="btn-primary">Update Timezone</button>
+                    </form>
+                </div>
+
+                <div class="settings-card">
                     <h3>Change Username</h3>
                     <p class="settings-help">Update your username (must be available).</p>
                     <form method="POST" action="{{ url_for('update_username') }}">
