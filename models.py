@@ -14,6 +14,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     profile_image = db.Column(db.String(255), nullable=True)  # static-relative path: uploads/avatars/<file>
     timezone = db.Column(db.String(64), nullable=True, default='UTC')  # IANA timezone, e.g. 'America/New_York'
+    daily_email_enabled = db.Column(db.Boolean, default=False)
+    daily_email_time = db.Column(db.String(5), nullable=True, default='06:00')  # HH:MM (local)
+    daily_email_last_sent_at = db.Column(db.DateTime, nullable=True)  # stored as UTC
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     problems = db.relationship('Problem', backref='user', lazy=True, cascade='all, delete-orphan')

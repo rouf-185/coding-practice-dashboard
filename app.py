@@ -1,6 +1,6 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dtime
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 import secrets
@@ -12,10 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from models import db, User, Problem, PasswordResetToken, ProblemHistory, EmailChangeRequest
 from utils import scrape_leetcode_problem
 from PIL import Image, ImageOps
-try:
-    from zoneinfo import available_timezones
-except Exception:  # pragma: no cover
-    available_timezones = None
+from zoneinfo import ZoneInfo, available_timezones
 
 load_dotenv()
 
@@ -66,6 +63,171 @@ def _save_resized_avatar(image_file, user_id: int) -> str:
     abs_path = os.path.join(AVATAR_UPLOAD_DIR, filename)
     img.save(abs_path, format='PNG', optimize=True)
     return f"uploads/avatars/{filename}"
+
+
+def _get_user_tz(user: User) -> ZoneInfo:
+    tz_name = (getattr(user, 'timezone', None) or 'UTC').strip()
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return ZoneInfo('UTC')
+
+
+def _local_day_bounds_to_utc_naive(user_tz: ZoneInfo, local_day) -> tuple[datetime, datetime]:
+    """Return (start_utc_naive, end_utc_naive) covering local_day [00:00, 24:00)."""
+    start_local = datetime.combine(local_day, dtime.min).replace(tzinfo=user_tz)
+    end_local = start_local + timedelta(days=1)
+    start_utc = start_local.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+    end_utc = end_local.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+    return start_utc, end_utc
+
+
+def get_practice_items_for_user(user: User, utc_now: datetime) -> list[dict]:
+    """
+    Build today's practice list for the user using THEIR local day and timezone-aware day boundaries.
+    Returns list of dicts: {title, leetcode_url, difficulty}
+    """
+    user_tz = _get_user_tz(user)
+    local_now = utc_now.replace(tzinfo=ZoneInfo('UTC')).astimezone(user_tz)
+    local_today = local_now.date()
+
+    items = []
+    seen_problem_ids = set()
+
+    # Problems solved N days ago (based on the user's local date)
+    for days_ago in [2, 5, 10, 30]:
+        target_local_day = local_today - timedelta(days=days_ago)
+        start_utc, end_utc = _local_day_bounds_to_utc_naive(user_tz, target_local_day)
+        date_problems = Problem.query.filter(
+            Problem.user_id == user.id,
+            Problem.solved_date >= start_utc,
+            Problem.solved_date < end_utc,
+        ).all()
+        for p in date_problems:
+            if p.id in seen_problem_ids:
+                continue
+            seen_problem_ids.add(p.id)
+            items.append({"title": p.title, "leetcode_url": p.leetcode_url, "difficulty": p.difficulty})
+
+    # Weekend random problems (Saturday=5, Sunday=6) in user's local time
+    if local_today.weekday() in [5, 6]:
+        query = Problem.query.filter(Problem.user_id == user.id)
+        if seen_problem_ids:
+            query = query.filter(~Problem.id.in_(seen_problem_ids))
+        import random
+        date_str = local_today.strftime('%m-%d-%Y')
+        random.seed(hash(f"{user.id}-{date_str}"))
+        all_problems = query.all()
+        random.shuffle(all_problems)
+        for p in all_problems[: min(2, len(all_problems))]:
+            if p.id in seen_problem_ids:
+                continue
+            seen_problem_ids.add(p.id)
+            items.append({"title": p.title, "leetcode_url": p.leetcode_url, "difficulty": p.difficulty})
+
+    return items
+
+
+def send_daily_practice_emails(utc_now: datetime | None = None) -> int:
+    """
+    Send daily practice emails for users whose local time matches their configured send time.
+    Returns count of emails sent.
+    """
+    utc_now = utc_now or datetime.utcnow()
+    sent = 0
+
+    users = User.query.filter(User.daily_email_enabled == True).all()  # noqa: E712
+    for user in users:
+        if not user.email:
+            continue
+
+        user_tz = _get_user_tz(user)
+        local_now = utc_now.replace(tzinfo=ZoneInfo('UTC')).astimezone(user_tz)
+        local_today = local_now.date()
+
+        # Already sent today? (compare in user's local day)
+        if user.daily_email_last_sent_at:
+            last_local = user.daily_email_last_sent_at.replace(tzinfo=ZoneInfo('UTC')).astimezone(user_tz).date()
+            if last_local == local_today:
+                continue
+
+        # Match configured HH:MM
+        send_time = (user.daily_email_time or '06:00').strip()
+        try:
+            hh, mm = send_time.split(':', 1)
+            hh_i = int(hh)
+            mm_i = int(mm)
+        except Exception:
+            hh_i, mm_i = 6, 0
+
+        if not (local_now.hour == hh_i and local_now.minute == mm_i):
+            continue
+
+        practice_items = get_practice_items_for_user(user, utc_now)
+
+        # Build email content
+        date_label = local_today.strftime('%Y-%m-%d')
+        if practice_items:
+            rows = "\n".join(
+                [
+                    f"""
+                    <tr>
+                      <td style="padding:10px 12px;border-bottom:1px solid #eee;">
+                        <a href="{i['leetcode_url']}" style="color:#111;text-decoration:none;font-weight:700;">{i['title']}</a>
+                        <div style="margin-top:4px;color:#666;font-size:12px;">{i['leetcode_url']}</div>
+                      </td>
+                      <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">
+                        <span style="display:inline-block;padding:4px 10px;border-radius:999px;border:2px solid #111;font-weight:900;font-size:12px;">
+                          {i['difficulty'].upper()}
+                        </span>
+                      </td>
+                    </tr>
+                    """.strip()
+                    for i in practice_items
+                ]
+            )
+            body = f"""
+            <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+              <h2 style="margin:0 0 8px 0;">Today's practice list</h2>
+              <div style="color:#666;margin-bottom:14px;">{date_label} • CodingFlashcard</div>
+              <table style="width:100%;border-collapse:collapse;border:2px solid #111;border-radius:14px;overflow:hidden;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left;padding:10px 12px;background:#111;color:#fff;">Problem</th>
+                    <th style="text-align:right;padding:10px 12px;background:#111;color:#fff;">Difficulty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows}
+                </tbody>
+              </table>
+              <p style="color:#666;margin-top:14px;">Tip: open a problem, solve it, then hit “Done”.</p>
+            </div>
+            """
+        else:
+            body = f"""
+            <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+              <h2 style="margin:0 0 8px 0;">No practice items today</h2>
+              <div style="color:#666;margin-bottom:14px;">{date_label} • CodingFlashcard</div>
+              <p style="color:#111;">You're all caught up. Add more problems to keep your spaced repetition going.</p>
+            </div>
+            """
+
+        try:
+            _send_brevo_email(
+                to_email=user.email,
+                subject=f"Today's practice - CodingFlashcard ({date_label})",
+                html_content=body,
+            )
+        except Exception as e:
+            print(f"Daily email failed for user {user.id}: {e}")
+            continue
+
+        user.daily_email_last_sent_at = utc_now
+        db.session.commit()
+        sent += 1
+
+    return sent
 
 
 def _send_brevo_email(to_email: str, subject: str, html_content: str):
@@ -364,7 +526,7 @@ def settings():
         db.session.commit()
         pending = None
 
-    tzs = sorted(available_timezones()) if available_timezones else ['UTC']
+    tzs = sorted(available_timezones())
     return render_template('settings.html', user=user, pending_email_change=pending, timezones=tzs)
 
 
@@ -415,7 +577,7 @@ def update_timezone():
         return redirect(url_for('login'))
 
     tz = (request.form.get('timezone') or '').strip()
-    tzs = set(available_timezones()) if available_timezones else {'UTC'}
+    tzs = set(available_timezones())
     if not tz or tz not in tzs:
         flash('Please select a valid timezone.', 'error')
         return redirect(url_for('settings'))
@@ -423,6 +585,39 @@ def update_timezone():
     user.timezone = tz
     db.session.commit()
     flash('Timezone updated.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/daily-email', methods=['POST'])
+@require_login
+def update_daily_email_settings():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    enabled = (request.form.get('daily_email_enabled') == 'on')
+    send_time = (request.form.get('daily_email_time') or '06:00').strip()
+
+    # Validate HH:MM
+    try:
+        hh, mm = send_time.split(':', 1)
+        hh_i = int(hh)
+        mm_i = int(mm)
+        if not (0 <= hh_i <= 23 and 0 <= mm_i <= 59):
+            raise ValueError("out of range")
+        send_time = f"{hh_i:02d}:{mm_i:02d}"
+    except Exception:
+        flash('Please provide a valid time (HH:MM).', 'error')
+        return redirect(url_for('settings'))
+
+    user.daily_email_enabled = enabled
+    user.daily_email_time = send_time
+    db.session.commit()
+
+    flash('Daily email settings updated.', 'success')
     return redirect(url_for('settings'))
 
 
@@ -1034,6 +1229,21 @@ def migrate_database():
                     conn.execute(db.text("ALTER TABLE users ADD COLUMN timezone TEXT DEFAULT 'UTC'"))
                     conn.commit()
                 print("Added timezone column to users table")
+            if 'daily_email_enabled' not in user_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE users ADD COLUMN daily_email_enabled INTEGER DEFAULT 0"))
+                    conn.commit()
+                print("Added daily_email_enabled column to users table")
+            if 'daily_email_time' not in user_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE users ADD COLUMN daily_email_time TEXT DEFAULT '06:00'"))
+                    conn.commit()
+                print("Added daily_email_time column to users table")
+            if 'daily_email_last_sent_at' not in user_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE users ADD COLUMN daily_email_last_sent_at DATETIME"))
+                    conn.commit()
+                print("Added daily_email_last_sent_at column to users table")
 
         if 'problems' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('problems')]
