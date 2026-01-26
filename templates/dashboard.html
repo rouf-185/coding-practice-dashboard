@@ -502,8 +502,8 @@ let goalChart = null;
     const ctx = document.getElementById('goalChart');
     if (!ctx) return;
     
-    const done = {{ goal_progress.done }};
-    const remaining = {{ goal_progress.remaining }};
+    const done = {{ goal_progress.done | default(0) }};
+    const remaining = {{ goal_progress.remaining | default(0) }};
     const total = done + remaining;
     
     const chartCtx = ctx.getContext('2d');
