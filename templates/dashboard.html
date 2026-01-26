@@ -559,8 +559,14 @@ let goalChart = null;
 // Difficulty Pie Chart
 function loadDifficultyData(period) {
     fetch(`/api/difficulty-stats?period=${period}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Difficulty data:', data);
             updateDifficultyChart(data);
             updateDifficultyLegend(data);
         })
@@ -713,8 +719,14 @@ document.addEventListener('click', function() {
 
 function loadChartData(year, month) {
     fetch(`/api/practice-data?year=${year}&month=${month}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Practice data:', data);
             updateChart(data);
         })
         .catch(error => {
@@ -808,13 +820,27 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 function loadHeatmapData(year) {
     fetch(`/api/heatmap-data?year=${year}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Heatmap data:', data);
             renderHeatmap(data);
         })
         .catch(error => {
             console.error('Error loading heatmap data:', error);
         });
+}
+
+// Helper to format date as YYYY-MM-DD without timezone issues
+function formatDateLocal(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 function renderHeatmap(data) {
@@ -830,7 +856,9 @@ function renderHeatmap(data) {
     const maxCount = data.max_count || 1;
     
     // Update summary
-    summaryEl.textContent = `${data.total_activities} activities in ${data.active_days} days`;
+    if (summaryEl) {
+        summaryEl.textContent = `${data.total_activities} activities in ${data.active_days} days`;
+    }
     
     // Generate each month as a separate block
     for (let month = 0; month < 12; month++) {
@@ -868,7 +896,7 @@ function renderHeatmap(data) {
                 
                 // Check if date is within this month
                 if (currentDate.getMonth() === month && currentDate.getFullYear() === year) {
-                    const dateStr = currentDate.toISOString().split('T')[0];
+                    const dateStr = formatDateLocal(currentDate);
                     const count = activityData[dateStr] || 0;
                     const level = getActivityLevel(count, maxCount);
                     
