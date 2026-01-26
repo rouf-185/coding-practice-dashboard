@@ -113,41 +113,87 @@
         <div class="practice-problems-section">
             <h2 class="section-title">Problems to Practice Today</h2>
             {% if grouped_problems %}
-                <div class="problems-container">
-                    {% for category, problems in grouped_problems.items() %}
-                        <div class="problem-category">
-                            <h3 class="category-title">{{ category }}</h3>
-                            <div class="problem-list">
-                                {% for item in problems %}
-                                    {% set problem = item.problem %}
-                                    {% set solved_recently = item.solved_recently %}
-                                    <div class="problem-card {% if problem.last_practiced %}solved{% endif %}">
-                                        <div class="problem-header">
-                                            <h3 class="problem-title">
-                                                {{ problem.title }}
-                                                {% if solved_recently %}
-                                                    <span class="solved-badge">✓ Solved</span>
-                                                {% endif %}
-                                            </h3>
-                                            <span class="difficulty-badge difficulty-{{ problem.difficulty }}">
-                                                {{ problem.difficulty.upper() }}
-                                            </span>
+                {% set tabs = [
+                    {'id': 'tab-2', 'label': '2 days before', 'key': 'Solved 2 days ago'},
+                    {'id': 'tab-5', 'label': '5 days before', 'key': 'Solved 5 days ago'},
+                    {'id': 'tab-10', 'label': '10 days before', 'key': 'Solved 10 days ago'},
+                    {'id': 'tab-random', 'label': 'Random pick', 'key': 'Random Practice'}
+                ] %}
+
+                <div class="practice-tabs" id="practiceTabs">
+                    <div class="practice-tablist" role="tablist" aria-label="Practice buckets">
+                        {% for t in tabs %}
+                            {% set cnt = (grouped_problems.get(t.key, []) | length) %}
+                            <button
+                                type="button"
+                                class="practice-tab-btn"
+                                role="tab"
+                                id="{{ t.id }}-btn"
+                                aria-controls="{{ t.id }}-panel"
+                                aria-selected="false"
+                                data-tab="{{ t.id }}"
+                                data-count="{{ cnt }}"
+                            >
+                                <span class="practice-tab-label">{{ t.label }}</span>
+                                <span class="practice-tab-count">{{ cnt }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+
+                    {% for t in tabs %}
+                        {% set problems = grouped_problems.get(t.key, []) %}
+                        <div
+                            class="practice-tab-panel"
+                            role="tabpanel"
+                            id="{{ t.id }}-panel"
+                            aria-labelledby="{{ t.id }}-btn"
+                            data-tab-panel="{{ t.id }}"
+                            hidden
+                        >
+                            {% if problems %}
+                                <div class="practice-card-grid">
+                                    {% for item in problems %}
+                                        {% set problem = item.problem %}
+                                        {% set solved_recently = item.solved_recently %}
+                                        <div class="problem-card {% if problem.last_practiced %}solved{% endif %}">
+                                            <div class="problem-header">
+                                                <h3 class="problem-title">
+                                                    {{ problem.title }}
+                                                    {% if solved_recently %}
+                                                        <span class="solved-badge">✓ Solved</span>
+                                                    {% endif %}
+                                                </h3>
+                                                <span class="difficulty-badge difficulty-{{ problem.difficulty }}">
+                                                    {{ problem.difficulty.upper() }}
+                                                </span>
+                                            </div>
+                                            <div class="problem-actions">
+                                                <a href="{{ problem.leetcode_url }}" target="_blank" rel="noopener noreferrer" class="btn-leetcode">
+                                                    View on Leetcode
+                                                </a>
+                                                <button type="button" class="btn-history js-history" data-problem-id="{{ problem.id }}">View History</button>
+                                                <form method="POST" action="{{ url_for('mark_done', problem_id=problem.id) }}" style="display: inline;">
+                                                    <button type="submit" class="btn-done">Done</button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" class="js-delete" data-problem-title="{{ problem.title }}">
+                                                    <button type="submit" class="btn-delete">Delete</button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <div class="problem-actions">
-                                            <a href="{{ problem.leetcode_url }}" target="_blank" rel="noopener noreferrer" class="btn-leetcode">
-                                                View on Leetcode
-                                            </a>
-                                            <button onclick="viewHistory({{ problem.id }})" class="btn-history">View History</button>
-                                            <form method="POST" action="{{ url_for('mark_done', problem_id=problem.id) }}" style="display: inline;">
-                                                <button type="submit" class="btn-done">Done</button>
-                                            </form>
-                                            <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" onsubmit="return confirmDelete('{{ problem.title }}');">
-                                                <button type="submit" class="btn-delete">Delete</button>
-                                            </form>
-                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="practice-empty">
+                                    <div class="practice-empty-title">No problems in this tab.</div>
+                                    <div class="practice-empty-help">
+                                        {% if t.key == 'Random Practice' %}
+                                            Random pick shows on Saturday/Sunday.
+                                        {% else %}
+                                            Add more problems (or practice history) to populate this bucket.
+                                        {% endif %}
                                     </div>
-                                {% endfor %}
-                            </div>
+                                </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                 </div>
@@ -303,6 +349,24 @@ function confirmDelete(problemTitle) {
     return confirm(`Are you sure you want to delete "${problemTitle}"? This action cannot be undone.`);
 }
 
+// Bind History / Delete events without inline JS (avoids template-linter issues)
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.js-history');
+    if (!btn) return;
+    const id = btn.getAttribute('data-problem-id');
+    if (!id) return;
+    viewHistory(id);
+});
+
+document.addEventListener('submit', function(e) {
+    const form = e.target.closest('form.js-delete');
+    if (!form) return;
+    const title = form.getAttribute('data-problem-title') || 'this problem';
+    if (!confirmDelete(title)) {
+        e.preventDefault();
+    }
+});
+
 // Close modal when clicking outside
 document.getElementById('addProblemModal').addEventListener('click', function(e) {
     if (e.target === this) {
@@ -318,6 +382,36 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
 
 // Chart functionality
 let practiceChart = null;
+
+// Practice tabs
+(function initPracticeTabs() {
+    const root = document.getElementById('practiceTabs');
+    if (!root) return;
+
+    const buttons = Array.from(root.querySelectorAll('.practice-tab-btn'));
+    const panels = Array.from(root.querySelectorAll('.practice-tab-panel'));
+    if (!buttons.length || !panels.length) return;
+
+    function setActive(tabId) {
+        buttons.forEach(btn => {
+            const active = btn.dataset.tab === tabId;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        panels.forEach(panel => {
+            const active = panel.dataset.tabPanel === tabId;
+            panel.hidden = !active;
+        });
+    }
+
+    // Default: first tab with count > 0, else first tab.
+    const firstNonEmpty = buttons.find(b => Number(b.dataset.count || '0') > 0);
+    setActive((firstNonEmpty || buttons[0]).dataset.tab);
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => setActive(btn.dataset.tab));
+    });
+})();
 
 // Header settings dropdown
 function toggleHeaderSettings(e) {

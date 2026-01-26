@@ -599,6 +599,98 @@ body {
     letter-spacing: -0.4px;
 }
 
+/* Practice tabs */
+.practice-tabs {
+    background: transparent;
+}
+
+.practice-tablist {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0 16px 0;
+}
+
+.practice-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 2px solid #000000;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #000000;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 13px;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.practice-tab-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+}
+
+.practice-tab-btn.active {
+    background: #000000;
+    color: #ffffff;
+}
+
+.practice-tab-label {
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.practice-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.practice-tab-panel {
+    background: #ffffff;
+    border: 2px solid #000000;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+.practice-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.practice-empty {
+    padding: 22px 10px;
+    text-align: center;
+}
+
+.practice-empty-title {
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+.practice-empty-help {
+    color: #666666;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+@media (min-width: 1100px) {
+    .practice-card-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 /* Statistics Container */
 .stats-container {
     display: grid;
