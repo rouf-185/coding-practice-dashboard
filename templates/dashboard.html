@@ -45,52 +45,46 @@
         <div class="dashboard-top-section">
             <!-- Left: Practice Statistics -->
             <div class="stats-container-new">
-                <div class="stats-row">
-                    <div class="stats-card">
-                        <div class="stat-icon">✓</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.fully_practiced }}</div>
-                            <div class="stat-label">Mastered (≥3x)</div>
-                        </div>
-                    </div>
-                    <div class="stats-card">
-                        <div class="stat-icon">◐</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.partially_practiced }}</div>
-                            <div class="stat-label">In Progress (2x)</div>
-                        </div>
+                <div class="stats-card">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.fully_practiced }}</div>
+                        <div class="stat-label">Mastered</div>
                     </div>
                 </div>
-                <div class="stats-row">
-                    <div class="stats-card">
-                        <div class="stat-icon">○</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.solved_once }}</div>
-                            <div class="stat-label">Solved Once</div>
-                        </div>
-                    </div>
-                    <div class="stats-card">
-                        <div class="stat-icon">—</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.not_practiced }}</div>
-                            <div class="stat-label">Not Practiced</div>
-                        </div>
+                <div class="stats-card">
+                    <div class="stat-icon">◐</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.partially_practiced }}</div>
+                        <div class="stat-label">Learning</div>
                     </div>
                 </div>
-                <div class="stats-row">
-                    <div class="stats-card">
-                        <div class="stat-icon">●</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.practiced_today }}</div>
-                            <div class="stat-label">Today</div>
-                        </div>
+                <div class="stats-card">
+                    <div class="stat-icon">○</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.solved_once }}</div>
+                        <div class="stat-label">Once</div>
                     </div>
-                    <div class="stats-card">
-                        <div class="stat-icon">○</div>
-                        <div class="stat-content">
-                            <div class="stat-number">{{ stats.practiced_yesterday }}</div>
-                            <div class="stat-label">Yesterday</div>
-                        </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stat-icon">—</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.not_practiced }}</div>
+                        <div class="stat-label">New</div>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stat-icon">●</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.practiced_today }}</div>
+                        <div class="stat-label">Today</div>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stat-icon">○</div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ stats.practiced_yesterday }}</div>
+                        <div class="stat-label">Yesterday</div>
                     </div>
                 </div>
             </div>
