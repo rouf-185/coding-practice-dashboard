@@ -20,8 +20,12 @@
                 <span class="appbar-add-icon" aria-hidden="true">+</span>
             </button>
             <div class="appbar-user" aria-label="Signed in user">
-                <span class="appbar-user-dot" aria-hidden="true"></span>
                 <span class="appbar-user-name">{{ user.username }}</span>
+                {% if user.profile_image %}
+                    <img class="appbar-avatar" src="{{ url_for('static', filename=user.profile_image) }}" alt="Profile picture">
+                {% else %}
+                    <span class="appbar-user-dot" aria-hidden="true"></span>
+                {% endif %}
             </div>
             <div class="settings-dropdown">
                 <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">

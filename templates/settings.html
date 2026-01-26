@@ -17,8 +17,12 @@
 
         <div class="appbar-right">
             <div class="appbar-user" aria-label="Signed in user">
-                <span class="appbar-user-dot" aria-hidden="true"></span>
                 <span class="appbar-user-name">{{ user.username }}</span>
+                {% if user.profile_image %}
+                    <img class="appbar-avatar" src="{{ url_for('static', filename=user.profile_image) }}" alt="Profile picture">
+                {% else %}
+                    <span class="appbar-user-dot" aria-hidden="true"></span>
+                {% endif %}
             </div>
             <div class="settings-dropdown">
                 <button type="button" class="btn-settings" id="settingsBtn" aria-haspopup="true" aria-expanded="false">
@@ -38,6 +42,34 @@
             <h2 class="section-title">Settings</h2>
 
             <div class="settings-grid">
+                <div class="settings-card">
+                    <h3>Profile Picture</h3>
+                    <p class="settings-help">Upload a profile picture. We’ll auto-crop and resize it to a square.</p>
+
+                    <div class="settings-avatar-row">
+                        {% if user.profile_image %}
+                            <img class="settings-avatar-preview" src="{{ url_for('static', filename=user.profile_image) }}" alt="Current profile picture">
+                        {% else %}
+                            <div class="settings-avatar-empty">No photo</div>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" action="{{ url_for('upload_profile_picture') }}" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="profile_picture">Upload</label>
+                            <input type="file" id="profile_picture" name="profile_picture" accept="image/png,image/jpeg,image/webp" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Upload</button>
+                    </form>
+
+                    {% if user.profile_image %}
+                        <div class="settings-divider"></div>
+                        <form method="POST" action="{{ url_for('delete_profile_picture') }}">
+                            <button type="submit" class="btn-delete">Delete</button>
+                        </form>
+                    {% endif %}
+                </div>
+
                 <div class="settings-card">
                     <h3>Change Username</h3>
                     <p class="settings-help">Update your username (must be available).</p>

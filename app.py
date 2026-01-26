@@ -11,6 +11,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from models import db, User, Problem, PasswordResetToken, ProblemHistory, EmailChangeRequest
 from utils import scrape_leetcode_problem
+from PIL import Image, ImageOps
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ os.makedirs(instance_path, exist_ok=True)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "codingflashcard.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4MB uploads
 
 db.init_app(app)
 
@@ -31,6 +33,35 @@ BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 BREVO_FROM_EMAIL = os.getenv('BREVO_FROM_EMAIL', 'info@jobdistributor.net')
 BREVO_FROM_NAME = os.getenv('BREVO_FROM_NAME', 'CodingFlashcard')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5000')
+
+# Avatar uploads (served from /static)
+AVATAR_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'avatars')
+os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+
+def _allowed_image_filename(filename: str) -> bool:
+    if not filename or '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
+
+def _save_resized_avatar(image_file, user_id: int) -> str:
+    """
+    Save a square resized avatar as PNG under static/uploads/avatars/.
+    Returns the static-relative path, e.g. 'uploads/avatars/user_1_xxx.png'
+    """
+    img = Image.open(image_file)
+    img = ImageOps.exif_transpose(img)
+    img = img.convert('RGB')
+    img = ImageOps.fit(img, (256, 256), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+
+    token = secrets.token_urlsafe(8)
+    filename = f"user_{user_id}_{token}.png"
+    abs_path = os.path.join(AVATAR_UPLOAD_DIR, filename)
+    img.save(abs_path, format='PNG', optimize=True)
+    return f"uploads/avatars/{filename}"
 
 
 def _send_brevo_email(to_email: str, subject: str, html_content: str):
@@ -365,6 +396,71 @@ def update_username():
 
     session['username'] = user.username
     flash('Username updated.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/profile-picture', methods=['POST'])
+@require_login
+def upload_profile_picture():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    file = request.files.get('profile_picture')
+    if not file or not file.filename:
+        flash('Please choose an image to upload.', 'error')
+        return redirect(url_for('settings'))
+
+    if not _allowed_image_filename(file.filename):
+        flash('Please upload a PNG, JPG, or WEBP image.', 'error')
+        return redirect(url_for('settings'))
+
+    # Save new avatar
+    try:
+        new_rel_path = _save_resized_avatar(file, user.id)
+    except Exception:
+        flash('Could not process that image. Please try a different file.', 'error')
+        return redirect(url_for('settings'))
+
+    # Delete previous avatar file (best-effort)
+    if user.profile_image:
+        try:
+            old_abs = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', user.profile_image)
+            if old_abs.startswith(AVATAR_UPLOAD_DIR) and os.path.exists(old_abs):
+                os.remove(old_abs)
+        except Exception:
+            pass
+
+    user.profile_image = new_rel_path
+    db.session.commit()
+    flash('Profile picture updated.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/profile-picture/delete', methods=['POST'])
+@require_login
+def delete_profile_picture():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    if user.profile_image:
+        try:
+            abs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', user.profile_image)
+            if abs_path.startswith(AVATAR_UPLOAD_DIR) and os.path.exists(abs_path):
+                os.remove(abs_path)
+        except Exception:
+            pass
+
+    user.profile_image = None
+    db.session.commit()
+    flash('Profile picture deleted.', 'success')
     return redirect(url_for('settings'))
 
 
@@ -899,6 +995,14 @@ def migrate_database():
     # Check if practice_count column exists
     try:
         inspector = inspect(db.engine)
+        if 'users' in inspector.get_table_names():
+            user_columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'profile_image' not in user_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text('ALTER TABLE users ADD COLUMN profile_image TEXT'))
+                    conn.commit()
+                print("Added profile_image column to users table")
+
         if 'problems' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('problems')]
             
