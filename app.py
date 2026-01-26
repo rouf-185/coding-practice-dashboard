@@ -71,8 +71,8 @@ def dashboard():
     problems = []
     problem_ids = set()
     
-    # Problems solved 2, 5, 10 days ago
-    for days_ago in [2, 5, 10]:
+    # Problems solved 2, 5, 10, 30 days ago
+    for days_ago in [2, 5, 10, 30]:
         target_date = today - timedelta(days=days_ago)
         date_problems = Problem.query.filter(
             Problem.user_id == user_id,
