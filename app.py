@@ -8,7 +8,8 @@ import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from dotenv import load_dotenv
 from sqlalchemy import inspect
-from models import db, User, Problem, PasswordResetToken, ProblemHistory
+from sqlalchemy.exc import IntegrityError
+from models import db, User, Problem, PasswordResetToken, ProblemHistory, EmailChangeRequest
 from utils import scrape_leetcode_problem
 
 load_dotenv()
@@ -30,6 +31,24 @@ BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 BREVO_FROM_EMAIL = os.getenv('BREVO_FROM_EMAIL', 'info@jobdistributor.net')
 BREVO_FROM_NAME = os.getenv('BREVO_FROM_NAME', 'CodingFlashcard')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5000')
+
+
+def _send_brevo_email(to_email: str, subject: str, html_content: str):
+    """Send a transactional email via Brevo. No-op if BREVO_API_KEY missing."""
+    if not BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is not configured")
+
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = BREVO_API_KEY
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": to_email}],
+        sender={"name": BREVO_FROM_NAME, "email": BREVO_FROM_EMAIL},
+        subject=subject,
+        html_content=html_content,
+    )
+    api_instance.send_transac_email(send_smtp_email)
 
 
 def require_login(f):
@@ -291,6 +310,190 @@ def change_password():
         return redirect(url_for('login'))
 
     return render_template('change_password.html')
+
+
+@app.route('/settings', methods=['GET'])
+@require_login
+def settings():
+    """Settings page: update username/email, access change-password."""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    pending = EmailChangeRequest.query.filter_by(user_id=user.id).order_by(EmailChangeRequest.created_at.desc()).first()
+    if pending and pending.is_expired():
+        db.session.delete(pending)
+        db.session.commit()
+        pending = None
+
+    return render_template('settings.html', user=user, pending_email_change=pending)
+
+
+@app.route('/settings/username', methods=['POST'])
+@require_login
+def update_username():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    new_username = (request.form.get('username') or '').strip()
+    if not new_username:
+        flash('Username cannot be empty.', 'error')
+        return redirect(url_for('settings'))
+
+    if new_username == user.username:
+        flash('Username is unchanged.', 'success')
+        return redirect(url_for('settings'))
+
+    if User.query.filter(User.username == new_username, User.id != user.id).first():
+        flash('That username is already taken.', 'error')
+        return redirect(url_for('settings'))
+
+    user.username = new_username
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash('That username is already taken.', 'error')
+        return redirect(url_for('settings'))
+
+    session['username'] = user.username
+    flash('Username updated.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/email/request', methods=['POST'])
+@require_login
+def request_email_change():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    new_email = (request.form.get('new_email') or '').strip().lower()
+    if not new_email:
+        flash('New email cannot be empty.', 'error')
+        return redirect(url_for('settings'))
+
+    if new_email == user.email.lower():
+        flash('New email must be different from the current email.', 'error')
+        return redirect(url_for('settings'))
+
+    if User.query.filter(User.email == new_email, User.id != user.id).first():
+        flash('That email is already in use.', 'error')
+        return redirect(url_for('settings'))
+
+    # Create/replace pending request
+    EmailChangeRequest.query.filter_by(user_id=user.id).delete()
+
+    current_code = f"{secrets.randbelow(1_000_000):06d}"
+    new_code = f"{secrets.randbelow(1_000_000):06d}"
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    req = EmailChangeRequest(
+        user_id=user.id,
+        current_email=user.email,
+        new_email=new_email,
+        current_email_code=current_code,
+        new_email_code=new_code,
+        expires_at=expires_at,
+    )
+    db.session.add(req)
+    db.session.commit()
+
+    # Send codes to both emails
+    try:
+        _send_brevo_email(
+            to_email=user.email,
+            subject="Verify email change (current email) - CodingFlashcard",
+            html_content=f"""
+            <h2>Email change verification</h2>
+            <p>Use this code to verify your <b>current</b> email address:</p>
+            <p style="font-size:24px;font-weight:700;letter-spacing:2px;">{current_code}</p>
+            <p>This code expires in 10 minutes.</p>
+            """,
+        )
+        _send_brevo_email(
+            to_email=new_email,
+            subject="Verify email change (new email) - CodingFlashcard",
+            html_content=f"""
+            <h2>Email change verification</h2>
+            <p>Use this code to verify your <b>new</b> email address:</p>
+            <p style="font-size:24px;font-weight:700;letter-spacing:2px;">{new_code}</p>
+            <p>This code expires in 10 minutes.</p>
+            """,
+        )
+    except Exception as e:
+        # Keep request so user can retry after fixing config
+        print(f"Email change send error: {e}")
+        flash('Could not send verification codes. Check Brevo settings and try again.', 'error')
+        return redirect(url_for('settings'))
+
+    flash('Verification codes sent to both your current and new email.', 'success')
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/email/confirm', methods=['POST'])
+@require_login
+def confirm_email_change():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    current_code = (request.form.get('current_email_code') or '').strip()
+    new_code = (request.form.get('new_email_code') or '').strip()
+
+    req = EmailChangeRequest.query.filter_by(user_id=user.id).order_by(EmailChangeRequest.created_at.desc()).first()
+    if not req:
+        flash('No pending email change request. Start again.', 'error')
+        return redirect(url_for('settings'))
+
+    if req.is_expired():
+        db.session.delete(req)
+        db.session.commit()
+        flash('Email verification codes expired. Please request again.', 'error')
+        return redirect(url_for('settings'))
+
+    # Validate codes
+    if current_code != req.current_email_code:
+        flash('Current email verification code is incorrect.', 'error')
+        return redirect(url_for('settings'))
+
+    if new_code != req.new_email_code:
+        flash('New email verification code is incorrect.', 'error')
+        return redirect(url_for('settings'))
+
+    # Ensure new email still available
+    if User.query.filter(User.email == req.new_email, User.id != user.id).first():
+        flash('That new email is already in use. Please request again.', 'error')
+        db.session.delete(req)
+        db.session.commit()
+        return redirect(url_for('settings'))
+
+    user.email = req.new_email
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash('That new email is already in use. Please request again.', 'error')
+        return redirect(url_for('settings'))
+
+    db.session.delete(req)
+    db.session.commit()
+
+    flash('Email updated successfully.', 'success')
+    return redirect(url_for('settings'))
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])

@@ -14,8 +14,16 @@
             <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
             <div class="user-info">
                 <span>{{ user.username }}</span>
-                <a href="{{ url_for('change_password') }}" class="btn-change-password">Change Password</a>
-                <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+                <div class="settings-dropdown">
+                    <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">
+                        ⚙
+                    </button>
+                    <div class="settings-menu" id="headerSettingsMenu">
+                        <a href="{{ url_for('settings') }}" class="settings-item">Settings</a>
+                        <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
+                        <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -308,6 +316,19 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
 
 // Chart functionality
 let practiceChart = null;
+
+// Header settings dropdown
+function toggleHeaderSettings(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('headerSettingsMenu');
+    if (!menu) return;
+    menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function() {
+    const menu = document.getElementById('headerSettingsMenu');
+    if (menu) menu.classList.remove('open');
+});
 
 function loadChartData(year, month) {
     fetch(`/api/practice-data?year=${year}&month=${month}`)

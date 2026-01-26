@@ -72,3 +72,28 @@ class PasswordResetToken(db.Model):
     def __repr__(self):
         return f'<PasswordResetToken {self.token[:8]}...>'
 
+
+class EmailChangeRequest(db.Model):
+    __tablename__ = 'email_change_requests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    current_email = db.Column(db.String(120), nullable=False)
+    new_email = db.Column(db.String(120), nullable=False)
+
+    current_email_code = db.Column(db.String(10), nullable=False)
+    new_email_code = db.Column(db.String(10), nullable=False)
+
+    verified_current = db.Column(db.Boolean, default=False)
+    verified_new = db.Column(db.Boolean, default=False)
+
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('email_change_requests', lazy=True, cascade='all, delete-orphan'))
+
+    def is_expired(self):
+        return datetime.utcnow() > self.expires_at
+
+

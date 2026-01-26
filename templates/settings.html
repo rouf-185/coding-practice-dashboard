@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - CodingFlashcard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="dashboard-header">
+        <h1>CodingFlashcard</h1>
+        <div class="header-actions">
+            <nav class="main-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Practice</a>
+                <a href="{{ url_for('all_problems') }}" class="nav-link">All Problems</a>
+            </nav>
+            <div class="user-info">
+                <span>{{ user.username }}</span>
+                <div class="settings-dropdown">
+                    <button type="button" class="btn-settings" id="settingsBtn" aria-haspopup="true" aria-expanded="false">
+                        ⚙
+                    </button>
+                    <div class="settings-menu" id="settingsMenu">
+                        <a href="{{ url_for('settings') }}" class="settings-item active">Settings</a>
+                        <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
+                        <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-content">
+        <div class="settings-page">
+            <h2 class="section-title">Settings</h2>
+
+            <div class="settings-grid">
+                <div class="settings-card">
+                    <h3>Change Username</h3>
+                    <p class="settings-help">Update your username (must be available).</p>
+                    <form method="POST" action="{{ url_for('update_username') }}">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" value="{{ user.username }}" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Update Username</button>
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Change Email</h3>
+                    <p class="settings-help">
+                        To change your email, we’ll send a verification code to your <b>current</b> email and your <b>new</b> email.
+                        Codes expire in 10 minutes.
+                    </p>
+
+                    <div class="settings-current-email">
+                        <span class="settings-label">Current email:</span>
+                        <span class="settings-value">{{ user.email }}</span>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('request_email_change') }}">
+                        <div class="form-group">
+                            <label for="new_email">New Email</label>
+                            <input type="email" id="new_email" name="new_email" placeholder="new@email.com" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Send Verification Codes</button>
+                    </form>
+
+                    {% if pending_email_change %}
+                        <div class="settings-divider"></div>
+                        <h4>Confirm Email Change</h4>
+                        <p class="settings-help">
+                            We sent codes to <b>{{ pending_email_change.current_email }}</b> and <b>{{ pending_email_change.new_email }}</b>.
+                        </p>
+                        <form method="POST" action="{{ url_for('confirm_email_change') }}">
+                            <div class="form-group">
+                                <label for="current_email_code">Code from current email</label>
+                                <input type="text" id="current_email_code" name="current_email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new_email_code">Code from new email</label>
+                                <input type="text" id="new_email_code" name="new_email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Confirm Email Change</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+// Settings dropdown
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsMenu = document.getElementById('settingsMenu');
+
+function closeSettingsMenu() {
+  settingsMenu.classList.remove('open');
+  settingsBtn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleSettingsMenu() {
+  const isOpen = settingsMenu.classList.contains('open');
+  if (isOpen) closeSettingsMenu();
+  else {
+    settingsMenu.classList.add('open');
+    settingsBtn.setAttribute('aria-expanded', 'true');
+  }
+}
+
+settingsBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleSettingsMenu();
+});
+
+document.addEventListener('click', () => closeSettingsMenu());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsMenu();
+});
+</script>
+{% endblock %}
+

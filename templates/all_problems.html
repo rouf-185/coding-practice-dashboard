@@ -14,8 +14,16 @@
             <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
             <div class="user-info">
                 <span>{{ user.username }}</span>
-                <a href="{{ url_for('change_password') }}" class="btn-change-password">Change Password</a>
-                <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+                <div class="settings-dropdown">
+                    <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">
+                        ⚙
+                    </button>
+                    <div class="settings-menu" id="headerSettingsMenu">
+                        <a href="{{ url_for('settings') }}" class="settings-item">Settings</a>
+                        <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
+                        <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -75,11 +83,11 @@
                                     <a href="{{ problem.leetcode_url }}" target="_blank" rel="noopener noreferrer" class="btn-compact btn-leetcode-compact">
                                         Leetcode
                                     </a>
-                                    <button onclick="viewHistory({{ problem.id }})" class="btn-compact btn-history-compact">History</button>
+                                    <button type="button" class="btn-compact btn-history-compact js-history" data-problem-id="{{ problem.id }}">History</button>
                                     <form method="POST" action="{{ url_for('mark_done', problem_id=problem.id) }}" style="display: inline;">
                                         <button type="submit" class="btn-compact btn-done-compact">Done</button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" onsubmit="return confirmDelete('{{ problem.title }}');">
+                                    <form method="POST" action="{{ url_for('delete_problem', problem_id=problem.id) }}" style="display: inline;" class="js-delete" data-problem-title="{{ problem.title|e }}">
                                         <button type="submit" class="btn-compact btn-delete-compact">Delete</button>
                                     </form>
                                 </div>
@@ -240,6 +248,19 @@ function updateSelectColor(select) {
     }
 }
 
+// Header settings dropdown
+function toggleHeaderSettings(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('headerSettingsMenu');
+    if (!menu) return;
+    menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function() {
+    const menu = document.getElementById('headerSettingsMenu');
+    if (menu) menu.classList.remove('open');
+});
+
 function viewHistory(problemId) {
     fetch(`/problem-history/${problemId}`)
         .then(response => response.json())
@@ -292,8 +313,27 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
 });
 
 function confirmDelete(problemTitle) {
-    return confirm(`Are you sure you want to delete "${problemTitle}"? This action cannot be undone.`);
+    // Backwards-compatible helper (no longer used by inline handlers)
+    return confirm('Are you sure you want to delete \"' + problemTitle + '\"? This action cannot be undone.');
 }
+
+// Wire up History + Delete without inline JS
+document.addEventListener('click', function(e) {
+    const historyBtn = e.target.closest('.js-history');
+    if (historyBtn) {
+        const id = historyBtn.getAttribute('data-problem-id');
+        if (id) viewHistory(parseInt(id, 10));
+    }
+});
+
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (form && form.classList && form.classList.contains('js-delete')) {
+        const title = form.getAttribute('data-problem-title') || 'this problem';
+        const ok = confirm('Are you sure you want to delete \"' + title + '\"? This action cannot be undone.');
+        if (!ok) e.preventDefault();
+    }
+});
 </script>
 {% endblock %}
 
