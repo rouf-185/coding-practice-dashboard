@@ -5,24 +5,30 @@
 {% block content %}
 <div class="dashboard">
     <header class="dashboard-header">
-        <h1>CodingFlashcard</h1>
-        <div class="header-actions">
-            <nav class="main-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Practice</a>
-                <a href="{{ url_for('all_problems') }}" class="nav-link {% if request.endpoint == 'all_problems' %}active{% endif %}">All Problems</a>
-            </nav>
-            <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
-            <div class="user-info">
-                <span>{{ user.username }}</span>
-                <div class="settings-dropdown">
-                    <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">
-                        ⚙
-                    </button>
-                    <div class="settings-menu" id="headerSettingsMenu">
-                        <a href="{{ url_for('settings') }}" class="settings-item">Settings</a>
-                        <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
-                        <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
-                    </div>
+        <a class="appbar-brand" href="{{ url_for('dashboard') }}" aria-label="CodingFlashcard Home">
+            <span class="appbar-mark">CF</span>
+            <span class="appbar-title">CodingFlashcard</span>
+        </a>
+
+        <nav class="appbar-nav" aria-label="Primary">
+            <a href="{{ url_for('dashboard') }}" class="appbar-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Practice</a>
+            <a href="{{ url_for('all_problems') }}" class="appbar-link {% if request.endpoint == 'all_problems' %}active{% endif %}">All Problems</a>
+            <button type="button" onclick="openModal()" class="appbar-cta">Add Problem</button>
+        </nav>
+
+        <div class="appbar-right">
+            <div class="appbar-user" aria-label="Signed in user">
+                <span class="appbar-user-dot" aria-hidden="true"></span>
+                <span class="appbar-user-name">{{ user.username }}</span>
+            </div>
+            <div class="settings-dropdown">
+                <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">
+                    ⚙
+                </button>
+                <div class="settings-menu" id="headerSettingsMenu">
+                    <a href="{{ url_for('settings') }}" class="settings-item">Settings</a>
+                    <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
+                    <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
                 </div>
             </div>
         </div>
