@@ -25,7 +25,7 @@ def get_problem_history(problem_id):
 @api_bp.route('/practice-data')
 @require_login
 def get_practice_data():
-    """Get practice chart data."""
+    """Get practice chart data with goal achievement info."""
     user_id = session['user_id']
     now = datetime.utcnow()
     
@@ -39,6 +39,17 @@ def get_practice_data():
         month = now.month
     
     data = StatsService.get_monthly_practice_data(user_id, year, month)
+    
+    # Add goal achievement data
+    from repositories import DailyGoalRepository
+    goals = DailyGoalRepository.get_for_month(user_id, year, month)
+    
+    # Create goals dict: day -> achieved
+    data['goals'] = {
+        day: goals[day].achieved if day in goals else False
+        for day in data['days']
+    }
+    
     return jsonify(data)
 
 

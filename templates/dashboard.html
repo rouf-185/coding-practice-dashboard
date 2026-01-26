@@ -721,6 +721,9 @@ document.addEventListener('click', function() {
     if (menu) menu.classList.remove('open');
 });
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function loadChartData(year, month) {
     fetch(`/api/practice-data?year=${year}&month=${month}`)
         .then(response => {
@@ -731,14 +734,14 @@ function loadChartData(year, month) {
         })
         .then(data => {
             console.log('Practice data:', data);
-            updateChart(data);
+            updateChart(data, year, month);
         })
         .catch(error => {
             console.error('Error loading chart data:', error);
         });
 }
 
-function updateChart(data) {
+function updateChart(data, year, month) {
     const ctx = document.getElementById('practiceChart');
     if (!ctx) return;
     
@@ -748,23 +751,71 @@ function updateChart(data) {
         practiceChart.destroy();
     }
     
+    // Get goals data (day -> achieved)
+    const goals = data.goals || {};
+    
+    // Prepare labels with date info for tooltips
+    const chartLabels = data.days.map(day => {
+        const date = new Date(year, month - 1, day);
+        return {
+            day: day,
+            dayName: DAY_NAMES[date.getDay()],
+            monthName: MONTH_NAMES[month - 1],
+            year: year,
+            achieved: goals[day] || false
+        };
+    });
+    
+    // Checkmark plugin - show checkmark only when goal was achieved
+    const checkmarkPlugin = {
+        id: 'checkmarkPlugin',
+        afterDraw: (chart) => {
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+            
+            chartLabels.forEach((info, index) => {
+                if (info.achieved) {
+                    const x = xAxis.getPixelForValue(index);
+                    const y = yAxis.bottom + 14;
+                    
+                    ctx.save();
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('✓', x, y);
+                    ctx.restore();
+                }
+            });
+        }
+    };
+    
     practiceChart = new Chart(chartCtx, {
         type: 'bar',
         data: {
-            labels: data.days.map(day => day.toString()),
+            labels: data.days.map(d => ''),
             datasets: [{
-                label: 'Problems Solved',
+                label: 'Problems Practiced',
                 data: data.counts,
-                backgroundColor: '#595959',
-                borderColor: '#595959',
+                backgroundColor: data.counts.map((c, i) => {
+                    const day = data.days[i];
+                    if (goals[day]) return '#22c55e';  // Goal achieved - green
+                    if (c > 0) return '#86efac';  // Some practice but not achieved - light green
+                    return '#e5e5e5';  // No practice - gray
+                }),
                 borderWidth: 0,
                 borderRadius: 3,
-                barPercentage: 0.6
+                barPercentage: 0.7
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    bottom: 10
+                }
+            },
             plugins: {
                 legend: {
                     display: false
@@ -772,7 +823,27 @@ function updateChart(data) {
                 tooltip: {
                     backgroundColor: '#262626',
                     padding: 10,
-                    cornerRadius: 4
+                    cornerRadius: 4,
+                    titleFont: { size: 13, weight: '600' },
+                    bodyFont: { size: 12 },
+                    callbacks: {
+                        title: function(context) {
+                            const idx = context[0].dataIndex;
+                            const info = chartLabels[idx];
+                            return `${info.dayName}, ${info.monthName} ${info.day}`;
+                        },
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            const value = context.raw;
+                            const info = chartLabels[idx];
+                            
+                            let label = value > 0 ? `${value} problem${value > 1 ? 's' : ''} practiced` : 'No practice';
+                            if (info.achieved) {
+                                label += ' ✓ Goal achieved!';
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             scales: {
@@ -789,15 +860,15 @@ function updateChart(data) {
                 },
                 x: {
                     ticks: {
-                        color: '#8c8c8c',
-                        font: { size: 11 }
+                        display: false
                     },
                     grid: {
                         display: false
                     }
                 }
             }
-        }
+        },
+        plugins: [checkmarkPlugin]
     });
 }
 

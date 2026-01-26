@@ -7,6 +7,7 @@ All models are exported here for easy importing:
 from models.user import User
 from models.problem import Problem, ProblemHistory
 from models.auth import PasswordResetToken, EmailChangeRequest
+from models.daily_goal import DailyGoal
 
 __all__ = [
     'User',
@@ -14,4 +15,5 @@ __all__ = [
     'ProblemHistory',
     'PasswordResetToken',
     'EmailChangeRequest',
+    'DailyGoal',
 ]

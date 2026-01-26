@@ -36,7 +36,7 @@ def create_app(config_class=None):
 def _create_tables():
     """Create database tables if they don't exist."""
     # Import models to register them with SQLAlchemy
-    from models import User, Problem, ProblemHistory, PasswordResetToken, EmailChangeRequest
+    from models import User, Problem, ProblemHistory, PasswordResetToken, EmailChangeRequest, DailyGoal
     db.create_all()
 
 

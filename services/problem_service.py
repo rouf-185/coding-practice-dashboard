@@ -1,15 +1,17 @@
 """
 Problem service - Business logic for problem operations.
 """
-from typing import Optional, Tuple, List
-from datetime import datetime
+from typing import Optional, Tuple, List, Set
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
-from repositories import ProblemRepository
+from repositories import ProblemRepository, DailyGoalRepository
 from models import Problem
 
 
 class ProblemService:
     """Service for problem-related operations."""
+    
+    PRACTICE_INTERVALS = [2, 5, 10, 30]  # Days ago
     
     @staticmethod
     def add_problem(
@@ -83,9 +85,55 @@ class ProblemService:
         return None
     
     @staticmethod
+    def _get_scheduled_problem_ids(user_id: int) -> Set[int]:
+        """Get the set of problem IDs scheduled for practice today."""
+        today = datetime.utcnow().date()
+        problem_ids = set()
+        
+        # Problems solved N days ago
+        for days_ago in ProblemService.PRACTICE_INTERVALS:
+            target_date = today - timedelta(days=days_ago)
+            date_problems = ProblemRepository.get_problems_by_solved_date(user_id, target_date)
+            for p in date_problems:
+                problem_ids.add(p.id)
+        
+        # Weekend random problems (Saturday=5, Sunday=6)
+        if today.weekday() in [5, 6]:
+            remaining = ProblemRepository.get_problems_excluding_ids(user_id, problem_ids)
+            if remaining:
+                import random
+                date_str = today.strftime('%m-%d-%Y')
+                random.seed(hash(date_str))
+                random.shuffle(remaining)
+                for p in remaining[:min(2, len(remaining))]:
+                    problem_ids.add(p.id)
+        
+        return problem_ids
+    
+    @staticmethod
+    def _count_completed_today(user_id: int, scheduled_ids: Set[int]) -> int:
+        """Count how many scheduled problems were completed today."""
+        today = datetime.utcnow().date()
+        twelve_hours_ago = datetime.utcnow() - timedelta(hours=12)
+        
+        completed = 0
+        for problem_id in scheduled_ids:
+            problem = ProblemRepository.get_by_id(problem_id, user_id)
+            if not problem:
+                continue
+            
+            # Check if practiced today (within last 12 hours to match dashboard logic)
+            if problem.last_practiced and problem.last_practiced >= twelve_hours_ago:
+                completed += 1
+            elif problem.solved_date and problem.solved_date >= twelve_hours_ago:
+                completed += 1
+        
+        return completed
+    
+    @staticmethod
     def mark_done(user_id: int, problem_id: int) -> Tuple[bool, str]:
         """
-        Mark a problem as practiced.
+        Mark a problem as practiced and update daily goal tracking.
         
         Returns:
             Tuple of (success, message)
@@ -96,6 +144,23 @@ class ProblemService:
             return False, 'Problem not found.'
         
         ProblemRepository.mark_practiced(problem)
+        
+        # Update daily goal tracking
+        today = datetime.utcnow().date()
+        scheduled_ids = ProblemService._get_scheduled_problem_ids(user_id)
+        total_scheduled = len(scheduled_ids)
+        
+        # Count completed (including the one just marked)
+        completed = ProblemService._count_completed_today(user_id, scheduled_ids)
+        
+        # Update or create daily goal record
+        DailyGoalRepository.create_or_update(
+            user_id=user_id,
+            goal_date=today,
+            total_scheduled=total_scheduled,
+            completed=completed
+        )
+        
         return True, 'Problem marked as done!'
     
     @staticmethod
