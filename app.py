@@ -246,6 +246,53 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/change-password', methods=['GET', 'POST'])
+@require_login
+def change_password():
+    """Change password for logged-in user. Forces re-login on success."""
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+
+    if not user:
+        session.clear()
+        flash('Please login again.', 'error')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        current_password = (request.form.get('current_password') or '').strip()
+        new_password = request.form.get('new_password') or ''
+        new_password_confirm = request.form.get('new_password_confirm') or ''
+
+        if not current_password or not new_password or not new_password_confirm:
+            flash('Please fill in all fields.', 'error')
+            return render_template('change_password.html')
+
+        if not user.check_password(current_password):
+            flash('Current password is incorrect.', 'error')
+            return render_template('change_password.html')
+
+        if new_password != new_password_confirm:
+            flash('New passwords do not match.', 'error')
+            return render_template('change_password.html')
+
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters long.', 'error')
+            return render_template('change_password.html')
+
+        if user.check_password(new_password):
+            flash('New password must be different from the current password.', 'error')
+            return render_template('change_password.html')
+
+        user.set_password(new_password)
+        db.session.commit()
+
+        session.clear()
+        flash('Password changed. Please log in again.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('change_password.html')
+
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     """Forgot password page"""

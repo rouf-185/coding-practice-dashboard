@@ -14,6 +14,7 @@
             <button onclick="openModal()" class="btn-add-problem">Add Problem</button>
             <div class="user-info">
                 <span>{{ user.username }}</span>
+                <a href="{{ url_for('change_password') }}" class="btn-change-password">Change Password</a>
                 <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
             </div>
         </div>
