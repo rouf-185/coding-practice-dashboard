@@ -24,10 +24,27 @@ def index():
     # Get practice statistics
     stats = StatsService.get_practice_stats(user.id)
     
+    # Calculate today's goal progress
+    total_today = 0
+    done_today = 0
+    for category, items in grouped_problems.items():
+        for item in items:
+            total_today += 1
+            if item.get('solved_recently', False):
+                done_today += 1
+    
+    goal_progress = {
+        'total': total_today,
+        'done': done_today,
+        'remaining': total_today - done_today,
+        'percentage': round((done_today / total_today * 100) if total_today > 0 else 0)
+    }
+    
     return render_template(
         'dashboard.html',
         grouped_problems=grouped_problems,
         user=user,
         stats=stats,
+        goal_progress=goal_progress,
         now=datetime.utcnow()
     )

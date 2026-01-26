@@ -102,8 +102,12 @@
                     </div>
                 </div>
                 <div class="pie-chart-body">
-                    <div class="pie-chart-wrap">
+                    <div class="leetcode-pie-wrapper">
                         <canvas id="difficultyChart"></canvas>
+                        <div class="leetcode-pie-center">
+                            <span class="pie-center-value" id="difficultyTotal">0</span>
+                            <span class="pie-center-label">Solved</span>
+                        </div>
                     </div>
                     <div class="pie-chart-legend">
                         <div class="legend-item legend-easy">
@@ -120,10 +124,6 @@
                             <span class="legend-dot"></span>
                             <span class="legend-label">Hard</span>
                             <span class="legend-value" id="legendHard">0</span>
-                        </div>
-                        <div class="legend-total">
-                            <span class="legend-total-label">Total</span>
-                            <span class="legend-total-value" id="legendTotal">0</span>
                         </div>
                     </div>
                 </div>
@@ -155,33 +155,64 @@
             </div>
         </div>
 
-        <!-- Heatmap Section -->
-        <div class="heatmap-section">
-            <div class="heatmap-header">
-                <h2>Activity</h2>
-                <div class="heatmap-controls">
-                    <select id="heatmapYearSelect" class="chart-select">
-                        {% set current_year = now.year %}
-                        {% for year in range(current_year - 2, current_year + 1) %}
-                            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
-                        {% endfor %}
-                    </select>
-                    <span class="heatmap-summary" id="heatmapSummary"></span>
+        <!-- Goal + Heatmap Section -->
+        <div class="goal-heatmap-section">
+            <!-- Today's Goal -->
+            <div class="goal-card">
+                <div class="goal-header">
+                    <h2>Today's Goal</h2>
+                </div>
+                <div class="goal-chart-container">
+                    <div class="leetcode-pie-wrapper">
+                        <canvas id="goalChart"></canvas>
+                        <div class="leetcode-pie-center">
+                            <span class="pie-center-value">{{ goal_progress.done }}/{{ goal_progress.total }}</span>
+                            <span class="pie-center-label">Done</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="goal-stats">
+                    <div class="goal-stat">
+                        <span class="goal-stat-dot done"></span>
+                        <span class="goal-stat-label">Completed</span>
+                        <span class="goal-stat-value">{{ goal_progress.done }}</span>
+                    </div>
+                    <div class="goal-stat">
+                        <span class="goal-stat-dot remaining"></span>
+                        <span class="goal-stat-label">Remaining</span>
+                        <span class="goal-stat-value">{{ goal_progress.remaining }}</span>
+                    </div>
                 </div>
             </div>
-            <div class="heatmap-container">
-                <div class="heatmap-months-grid" id="heatmapMonthsGrid"></div>
-            </div>
-            <div class="heatmap-legend">
-                <span class="heatmap-legend-label">Less</span>
-                <div class="heatmap-legend-scale">
-                    <span class="heatmap-cell level-0"></span>
-                    <span class="heatmap-cell level-1"></span>
-                    <span class="heatmap-cell level-2"></span>
-                    <span class="heatmap-cell level-3"></span>
-                    <span class="heatmap-cell level-4"></span>
+
+            <!-- Heatmap -->
+            <div class="heatmap-section">
+                <div class="heatmap-header">
+                    <h2>Activity</h2>
+                    <div class="heatmap-controls">
+                        <select id="heatmapYearSelect" class="chart-select">
+                            {% set current_year = now.year %}
+                            {% for year in range(current_year - 2, current_year + 1) %}
+                                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="heatmap-summary" id="heatmapSummary"></span>
+                    </div>
                 </div>
-                <span class="heatmap-legend-label">More</span>
+                <div class="heatmap-container">
+                    <div class="heatmap-months-grid" id="heatmapMonthsGrid"></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span class="heatmap-legend-label">Less</span>
+                    <div class="heatmap-legend-scale">
+                        <span class="heatmap-cell level-0"></span>
+                        <span class="heatmap-cell level-1"></span>
+                        <span class="heatmap-cell level-2"></span>
+                        <span class="heatmap-cell level-3"></span>
+                        <span class="heatmap-cell level-4"></span>
+                    </div>
+                    <span class="heatmap-legend-label">More</span>
+                </div>
             </div>
         </div>
 
@@ -460,6 +491,70 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
 // Chart functionality
 let practiceChart = null;
 let difficultyChart = null;
+let goalChart = null;
+
+// Initialize Goal Chart
+(function initGoalChart() {
+    const ctx = document.getElementById('goalChart');
+    if (!ctx) return;
+    
+    const done = {{ goal_progress.done }};
+    const remaining = {{ goal_progress.remaining }};
+    const total = done + remaining;
+    
+    const chartCtx = ctx.getContext('2d');
+    
+    if (total === 0) {
+        goalChart = new Chart(chartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['No Tasks'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['#f0f0f0'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+        return;
+    }
+    
+    goalChart = new Chart(chartCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Remaining'],
+            datasets: [{
+                data: [done, remaining],
+                backgroundColor: ['#22c55e', '#e5e5e5'],
+                borderWidth: 0,
+                hoverOffset: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '75%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#262626',
+                    padding: 8,
+                    cornerRadius: 4,
+                    bodyFont: { size: 12 }
+                }
+            }
+        }
+    });
+})();
 
 // Difficulty Pie Chart
 function loadDifficultyData(period) {
@@ -551,7 +646,9 @@ function updateDifficultyLegend(data) {
     document.getElementById('legendEasy').textContent = data.easy;
     document.getElementById('legendMedium').textContent = data.medium;
     document.getElementById('legendHard').textContent = data.hard;
-    document.getElementById('legendTotal').textContent = data.easy + data.medium + data.hard;
+    const total = data.easy + data.medium + data.hard;
+    const totalEl = document.getElementById('difficultyTotal');
+    if (totalEl) totalEl.textContent = total;
 }
 
 // Initialize pie chart filters
