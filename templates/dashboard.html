@@ -487,7 +487,11 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
         closeHistoryModal();
     }
 });
+</script>
+{% endblock %}
 
+{% block scripts %}
+<script>
 // Chart functionality
 let practiceChart = null;
 let difficultyChart = null;
@@ -945,5 +949,5 @@ if (heatmapYearSelect) {
     });
 }
 </script>
-{% endblock %}
+{% endblock scripts %}
 
