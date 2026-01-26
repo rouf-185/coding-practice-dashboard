@@ -29,7 +29,7 @@
             </div>
             <div class="settings-dropdown">
                 <button type="button" class="btn-settings" aria-haspopup="true" aria-expanded="false" onclick="toggleHeaderSettings(event)">
-                    ⚙
+                    ☰
                 </button>
                 <div class="settings-menu" id="headerSettingsMenu">
                     <a href="{{ url_for('settings.index') }}" class="settings-item">Settings</a>
@@ -43,21 +43,21 @@
     <main class="dashboard-content">
         <!-- Top Section: Stats and Chart -->
         <div class="dashboard-top-section">
-            <!-- Left: Practice Statistics (2x2x2 layout) -->
+            <!-- Left: Practice Statistics -->
             <div class="stats-container-new">
                 <div class="stats-row">
                     <div class="stats-card">
                         <div class="stat-icon">✓</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.fully_practiced }}</div>
-                            <div class="stat-label">100% Practiced<br><span class="stat-sublabel">(≥3 times)</span></div>
+                            <div class="stat-label">Mastered (≥3x)</div>
                         </div>
                     </div>
                     <div class="stats-card">
                         <div class="stat-icon">◐</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.partially_practiced }}</div>
-                            <div class="stat-label">Partially Practiced<br><span class="stat-sublabel">(2 times)</span></div>
+                            <div class="stat-label">In Progress (2x)</div>
                         </div>
                     </div>
                 </div>
@@ -66,30 +66,30 @@
                         <div class="stat-icon">○</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.solved_once }}</div>
-                            <div class="stat-label">Solved Once<br><span class="stat-sublabel">(1 time)</span></div>
+                            <div class="stat-label">Solved Once</div>
                         </div>
                     </div>
                     <div class="stats-card">
                         <div class="stat-icon">—</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.not_practiced }}</div>
-                            <div class="stat-label">Not Practiced<br><span class="stat-sublabel">(0 times)</span></div>
+                            <div class="stat-label">Not Practiced</div>
                         </div>
                     </div>
                 </div>
                 <div class="stats-row">
                     <div class="stats-card">
-                        <div class="stat-icon">📅</div>
+                        <div class="stat-icon">●</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.practiced_today }}</div>
-                            <div class="stat-label">Practiced Today<br><span class="stat-sublabel">(Today)</span></div>
+                            <div class="stat-label">Today</div>
                         </div>
                     </div>
                     <div class="stats-card">
-                        <div class="stat-icon">📆</div>
+                        <div class="stat-icon">○</div>
                         <div class="stat-content">
                             <div class="stat-number">{{ stats.practiced_yesterday }}</div>
-                            <div class="stat-label">Practiced Yesterday<br><span class="stat-sublabel">(Yesterday)</span></div>
+                            <div class="stat-label">Yesterday</div>
                         </div>
                     </div>
                 </div>
