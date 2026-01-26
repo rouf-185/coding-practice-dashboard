@@ -329,6 +329,34 @@ body {
     gap: 10px;
 }
 
+.appbar-add {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 2px solid #000000;
+    background: #000000;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
+    transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.appbar-add:hover {
+    transform: translateY(-1px);
+    background: #ffffff;
+    color: #000000;
+}
+
+.appbar-add-icon {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    margin-top: -1px;
+}
+
 .appbar-user {
     display: inline-flex;
     align-items: center;
@@ -354,6 +382,9 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* No longer used (kept for backwards compat) */
+.appbar-cta { display: none; }
 
 .btn-logout {
     padding: 8px 16px;

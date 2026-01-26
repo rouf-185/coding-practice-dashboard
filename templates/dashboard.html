@@ -13,10 +13,12 @@
         <nav class="appbar-nav" aria-label="Primary">
             <a href="{{ url_for('dashboard') }}" class="appbar-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Practice</a>
             <a href="{{ url_for('all_problems') }}" class="appbar-link {% if request.endpoint == 'all_problems' %}active{% endif %}">All Problems</a>
-            <button type="button" onclick="openModal()" class="appbar-cta">Add Problem</button>
         </nav>
 
         <div class="appbar-right">
+            <button type="button" class="appbar-add" onclick="openModal()" aria-label="Add Problem" title="Add Problem">
+                <span class="appbar-add-icon" aria-hidden="true">+</span>
+            </button>
             <div class="appbar-user" aria-label="Signed in user">
                 <span class="appbar-user-dot" aria-hidden="true"></span>
                 <span class="appbar-user-name">{{ user.username }}</span>
