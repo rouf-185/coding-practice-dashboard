@@ -40,3 +40,19 @@ def get_practice_data():
     
     data = StatsService.get_monthly_practice_data(user_id, year, month)
     return jsonify(data)
+
+
+@api_bp.route('/difficulty-stats')
+@require_login
+def get_difficulty_stats():
+    """Get difficulty distribution stats with time filtering."""
+    user_id = session['user_id']
+    period = request.args.get('period', 'lifetime')
+    
+    # Validate period
+    valid_periods = ['today', 'week', 'month', 'year', 'lifetime']
+    if period not in valid_periods:
+        period = 'lifetime'
+    
+    data = StatsService.get_difficulty_stats(user_id, period)
+    return jsonify(data)

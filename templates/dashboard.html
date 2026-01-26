@@ -95,10 +95,50 @@
                 </div>
             </div>
 
+            <!-- Middle: Difficulty Pie Chart -->
+            <div class="chart-container pie-chart-container">
+                <div class="chart-header">
+                    <h2>By Difficulty</h2>
+                    <div class="chart-controls pie-filters">
+                        <button type="button" class="pie-filter-btn active" data-period="lifetime">All</button>
+                        <button type="button" class="pie-filter-btn" data-period="year">Year</button>
+                        <button type="button" class="pie-filter-btn" data-period="month">Month</button>
+                        <button type="button" class="pie-filter-btn" data-period="week">Week</button>
+                        <button type="button" class="pie-filter-btn" data-period="today">Today</button>
+                    </div>
+                </div>
+                <div class="pie-chart-body">
+                    <div class="pie-chart-wrap">
+                        <canvas id="difficultyChart"></canvas>
+                    </div>
+                    <div class="pie-chart-legend">
+                        <div class="legend-item legend-easy">
+                            <span class="legend-dot"></span>
+                            <span class="legend-label">Easy</span>
+                            <span class="legend-value" id="legendEasy">0</span>
+                        </div>
+                        <div class="legend-item legend-medium">
+                            <span class="legend-dot"></span>
+                            <span class="legend-label">Medium</span>
+                            <span class="legend-value" id="legendMedium">0</span>
+                        </div>
+                        <div class="legend-item legend-hard">
+                            <span class="legend-dot"></span>
+                            <span class="legend-label">Hard</span>
+                            <span class="legend-value" id="legendHard">0</span>
+                        </div>
+                        <div class="legend-total">
+                            <span class="legend-total-label">Total</span>
+                            <span class="legend-total-value" id="legendTotal">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Right: Practice Chart -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>Problems Solved This Month</h2>
+                    <h2>Daily Activity</h2>
                     <div class="chart-controls">
                         <select id="yearSelect" class="chart-select">
                             {% set current_year = now.year %}
@@ -395,6 +435,117 @@ document.getElementById('historyModal').addEventListener('click', function(e) {
 
 // Chart functionality
 let practiceChart = null;
+let difficultyChart = null;
+
+// Difficulty Pie Chart
+function loadDifficultyData(period) {
+    fetch(`/api/difficulty-stats?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            updateDifficultyChart(data);
+            updateDifficultyLegend(data);
+        })
+        .catch(error => {
+            console.error('Error loading difficulty data:', error);
+        });
+}
+
+function updateDifficultyChart(data) {
+    const ctx = document.getElementById('difficultyChart');
+    if (!ctx) return;
+    
+    const chartCtx = ctx.getContext('2d');
+    
+    if (difficultyChart) {
+        difficultyChart.destroy();
+    }
+    
+    const total = data.easy + data.medium + data.hard;
+    
+    // If no data, show empty state
+    if (total === 0) {
+        difficultyChart = new Chart(chartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['No Data'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['#f0f0f0'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+        return;
+    }
+    
+    difficultyChart = new Chart(chartCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Easy', 'Medium', 'Hard'],
+            datasets: [{
+                data: [data.easy, data.medium, data.hard],
+                backgroundColor: ['#22c55e', '#f97316', '#ef4444'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#262626',
+                    padding: 10,
+                    cornerRadius: 4,
+                    titleFont: { size: 13, weight: '500' },
+                    bodyFont: { size: 12 },
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return ` ${value} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateDifficultyLegend(data) {
+    document.getElementById('legendEasy').textContent = data.easy;
+    document.getElementById('legendMedium').textContent = data.medium;
+    document.getElementById('legendHard').textContent = data.hard;
+    document.getElementById('legendTotal').textContent = data.easy + data.medium + data.hard;
+}
+
+// Initialize pie chart filters
+(function initPieFilters() {
+    const filterBtns = document.querySelectorAll('.pie-filter-btn');
+    if (!filterBtns.length) return;
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            loadDifficultyData(this.dataset.period);
+        });
+    });
+    
+    // Load initial data
+    loadDifficultyData('lifetime');
+})();
 
 // Practice tabs
 (function initPracticeTabs() {
@@ -467,9 +618,11 @@ function updateChart(data) {
             datasets: [{
                 label: 'Problems Solved',
                 data: data.counts,
-                backgroundColor: '#000000',
-                borderColor: '#000000',
-                borderWidth: 2
+                backgroundColor: '#595959',
+                borderColor: '#595959',
+                borderWidth: 0,
+                borderRadius: 3,
+                barPercentage: 0.6
             }]
         },
         options: {
@@ -478,6 +631,11 @@ function updateChart(data) {
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    backgroundColor: '#262626',
+                    padding: 10,
+                    cornerRadius: 4
                 }
             },
             scales: {
@@ -485,15 +643,17 @@ function updateChart(data) {
                     beginAtZero: true,
                     ticks: {
                         stepSize: 1,
-                        color: '#000000'
+                        color: '#8c8c8c',
+                        font: { size: 11 }
                     },
                     grid: {
-                        color: '#e0e0e0'
+                        color: '#f0f0f0'
                     }
                 },
                 x: {
                     ticks: {
-                        color: '#000000'
+                        color: '#8c8c8c',
+                        font: { size: 11 }
                     },
                     grid: {
                         display: false

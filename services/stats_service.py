@@ -102,3 +102,57 @@ class StatsService:
             'year': year,
             'month': month
         }
+    
+    @staticmethod
+    def get_difficulty_stats(user_id: int, period: str = 'lifetime') -> Dict[str, int]:
+        """
+        Get problem counts by difficulty for a time period.
+        
+        Args:
+            user_id: User ID
+            period: One of 'today', 'week', 'month', 'year', 'lifetime'
+        
+        Returns:
+            Dictionary with easy, medium, hard counts.
+        """
+        now = datetime.utcnow()
+        today = now.date()
+        
+        # Calculate date range based on period
+        if period == 'today':
+            start_date = datetime.combine(today, datetime.min.time())
+        elif period == 'week':
+            # Start of current week (Monday)
+            days_since_monday = today.weekday()
+            week_start = today - timedelta(days=days_since_monday)
+            start_date = datetime.combine(week_start, datetime.min.time())
+        elif period == 'month':
+            start_date = datetime(today.year, today.month, 1)
+        elif period == 'year':
+            start_date = datetime(today.year, 1, 1)
+        else:  # lifetime
+            start_date = None
+        
+        # Get all problems for user
+        all_problems = ProblemRepository.get_all_for_user(user_id)
+        
+        # Filter by date range if not lifetime
+        if start_date:
+            problems = [
+                p for p in all_problems
+                if p.solved_date and p.solved_date >= start_date
+            ]
+        else:
+            problems = all_problems
+        
+        # Count by difficulty
+        easy = sum(1 for p in problems if p.difficulty == 'easy')
+        medium = sum(1 for p in problems if p.difficulty == 'medium')
+        hard = sum(1 for p in problems if p.difficulty == 'hard')
+        
+        return {
+            'easy': easy,
+            'medium': medium,
+            'hard': hard,
+            'period': period
+        }
