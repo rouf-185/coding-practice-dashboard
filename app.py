@@ -917,5 +917,16 @@ def migrate_database():
 if __name__ == '__main__':
     with app.app_context():
         migrate_database()
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    # Runtime configuration via env vars
+    # - DEBUG / FLASK_DEBUG: 1/true/yes to enable debug + auto-reload
+    # - HOST: default 127.0.0.1 (use 0.0.0.0 to listen on all interfaces)
+    # - PORT: default 5000
+    debug_env = (os.getenv('DEBUG') or os.getenv('FLASK_DEBUG') or '1').strip().lower()
+    debug = debug_env in {'1', 'true', 'yes', 'on'}
+
+    host = (os.getenv('HOST') or ('0.0.0.0' if debug else '127.0.0.1')).strip()
+    port = int(os.getenv('PORT') or 5000)
+
+    # In production-style runs, disable the reloader
+    app.run(host=host, port=port, debug=debug, use_reloader=debug)
 
