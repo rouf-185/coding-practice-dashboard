@@ -5,14 +5,14 @@
 {% block content %}
 <div class="dashboard">
     <header class="dashboard-header">
-        <a class="appbar-brand" href="{{ url_for('dashboard') }}" aria-label="CodingFlashcard Home">
+        <a class="appbar-brand" href="{{ url_for('dashboard.index') }}" aria-label="CodingFlashcard Home">
             <span class="appbar-mark">CF</span>
             <span class="appbar-title">CodingFlashcard</span>
         </a>
 
         <nav class="appbar-nav" aria-label="Primary">
-            <a href="{{ url_for('dashboard') }}" class="appbar-link">Practice</a>
-            <a href="{{ url_for('all_problems') }}" class="appbar-link">All Problems</a>
+            <a href="{{ url_for('dashboard.index') }}" class="appbar-link">Practice</a>
+            <a href="{{ url_for('problems.all_problems') }}" class="appbar-link">All Problems</a>
         </nav>
 
         <div class="appbar-right">
@@ -29,9 +29,9 @@
                     ⚙
                 </button>
                 <div class="settings-menu" id="settingsMenu">
-                    <a href="{{ url_for('settings') }}" class="settings-item active">Settings</a>
-                    <a href="{{ url_for('change_password') }}" class="settings-item">Change Password</a>
-                    <a href="{{ url_for('logout') }}" class="settings-item danger">Logout</a>
+                    <a href="{{ url_for('settings.index') }}" class="settings-item active">Settings</a>
+                    <a href="{{ url_for('auth.change_password') }}" class="settings-item">Change Password</a>
+                    <a href="{{ url_for('auth.logout') }}" class="settings-item danger">Logout</a>
                 </div>
             </div>
         </div>
@@ -68,14 +68,14 @@
                                     <div class="settings-avatar-placeholder">?</div>
                                 {% endif %}
                                 <div class="settings-avatar-buttons">
-                                    <form method="POST" action="{{ url_for('upload_profile_picture') }}" enctype="multipart/form-data" class="settings-inline-form">
+                                    <form method="POST" action="{{ url_for('settings.upload_profile_picture') }}" enctype="multipart/form-data" class="settings-inline-form">
                                         <label class="btn-outline btn-sm">
                                             Upload
                                             <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp" hidden onchange="this.form.submit()">
                                         </label>
                                     </form>
                                     {% if user.profile_image %}
-                                        <form method="POST" action="{{ url_for('delete_profile_picture') }}" class="settings-inline-form">
+                                        <form method="POST" action="{{ url_for('settings.delete_profile_picture') }}" class="settings-inline-form">
                                             <button type="submit" class="btn-ghost btn-sm btn-danger">Remove</button>
                                         </form>
                                     {% endif %}
@@ -90,7 +90,7 @@
                             <div class="settings-row-hint">Your unique identifier</div>
                         </div>
                         <div class="settings-row-action">
-                            <form method="POST" action="{{ url_for('update_username') }}" class="settings-inline-form">
+                            <form method="POST" action="{{ url_for('settings.update_username') }}" class="settings-inline-form">
                                 <input type="text" name="username" value="{{ user.username }}" class="settings-input" required>
                                 <button type="submit" class="btn-outline btn-sm">Update</button>
                             </form>
@@ -115,7 +115,7 @@
                             <div class="settings-row-hint">Used for scheduling and display</div>
                         </div>
                         <div class="settings-row-action">
-                            <form method="POST" action="{{ url_for('update_timezone') }}" class="settings-inline-form">
+                            <form method="POST" action="{{ url_for('settings.update_timezone') }}" class="settings-inline-form">
                                 <input
                                     type="text"
                                     name="timezone"
@@ -141,7 +141,7 @@
                             <div class="settings-row-hint">Get your practice list every day</div>
                         </div>
                         <div class="settings-row-action">
-                            <form method="POST" action="{{ url_for('update_daily_email_settings') }}" class="settings-inline-form settings-email-form">
+                            <form method="POST" action="{{ url_for('settings.update_daily_email') }}" class="settings-inline-form settings-email-form">
                                 <label class="settings-toggle">
                                     <input type="checkbox" name="daily_email_enabled" {% if user.daily_email_enabled %}checked{% endif %}>
                                     <span class="settings-toggle-slider"></span>
@@ -174,14 +174,14 @@
                         </div>
                         <div class="settings-row-action">
                             {% if not pending_email_change %}
-                                <form method="POST" action="{{ url_for('request_email_change') }}" class="settings-inline-form">
+                                <form method="POST" action="{{ url_for('settings.request_email_change') }}" class="settings-inline-form">
                                     <input type="email" name="new_email" placeholder="new@email.com" class="settings-input" required>
                                     <button type="submit" class="btn-outline btn-sm">Change</button>
                                 </form>
                             {% else %}
                                 <div class="settings-pending-change">
                                     <div class="settings-pending-badge">Pending verification</div>
-                                    <form method="POST" action="{{ url_for('confirm_email_change') }}" class="settings-verify-form">
+                                    <form method="POST" action="{{ url_for('settings.confirm_email_change') }}" class="settings-verify-form">
                                         <div class="settings-verify-inputs">
                                             <input type="text" name="current_email_code" placeholder="Code (current)" class="settings-input settings-input-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
                                             <input type="text" name="new_email_code" placeholder="Code (new)" class="settings-input settings-input-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
@@ -199,7 +199,7 @@
                             <div class="settings-row-hint">Last changed: unknown</div>
                         </div>
                         <div class="settings-row-action">
-                            <a href="{{ url_for('change_password') }}" class="btn-outline btn-sm">Change Password</a>
+                            <a href="{{ url_for('auth.change_password') }}" class="btn-outline btn-sm">Change Password</a>
                         </div>
                     </div>
                 </div>

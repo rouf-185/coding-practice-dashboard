@@ -1,120 +1,109 @@
 # CodingFlashcard
 
-A simple spaced repetition coding practice dashboard to help you remember and practice Leetcode problems you've solved.
+A spaced repetition dashboard for practicing Leetcode problems. Track your solved problems and get daily reminders to practice them at optimal intervals (2, 5, 10, and 30 days).
 
 ## Features
 
-- **Spaced Repetition**: Automatically shows problems you solved 2, 5, and 10 days ago
-- **Weekend Random Practice**: On weekends, shows 2 additional random problems
-- **Easy Problem Addition**: Just paste a Leetcode URL and the system extracts the problem details
-- **User Authentication**: Register, login, and password reset via email
-- **Simple & Clean**: Single Flask application with HTML/CSS - no complex setup needed
+- **Spaced Repetition**: Automatically shows problems solved 2, 5, 10, and 30 days ago
+- **Weekend Random Pick**: Extra random problems on Saturday/Sunday
+- **Problem Tracking**: Store title, difficulty, solve date, and practice history
+- **Dashboard Stats**: View practice progress with charts
+- **Daily Email Reminders**: Get your practice list at a configurable time
+- **User Accounts**: Registration, login, password reset via email
 
-## Tech Stack
+## Requirements
 
-- **Backend**: Flask with SQLite database
-- **Frontend**: HTML/CSS templates
-- **Email Service**: Brevo (formerly Sendinblue) for password reset
+- Python 3.10+
+- Chrome browser (for Leetcode scraping)
 
-## Quick Start
+## Setup
 
-### 1. Install Dependencies
+1. **Clone and enter the directory**
+   ```bash
+   cd coding-practice-dashboard
+   ```
 
+2. **Create a virtual environment**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+
+   Create a `.env` file in the project root:
+   ```env
+   SECRET_KEY=your-secret-key-here
+   BREVO_API_KEY=your-brevo-api-key
+   BREVO_FROM_EMAIL=your-sender@email.com
+   BREVO_FROM_NAME=CodingFlashcard
+   FRONTEND_URL=http://localhost:5000
+   ```
+
+   - `SECRET_KEY`: Any random string for session security
+   - `BREVO_API_KEY`: Get from [Brevo](https://www.brevo.com/) for email functionality
+   - `FRONTEND_URL`: Your app's URL (used in password reset emails)
+
+## Running the Application
+
+### Development
 ```bash
-pip install -r requirements.txt
+source venv/bin/activate
+python app.py
 ```
+The app runs at `http://localhost:5000`
 
-### 2. Create Environment File
-
-Create a `.env` file in the root directory:
-
-```env
-SECRET_KEY=your-secret-key-here
-BREVO_API_KEY=your-brevo-api-key
-BREVO_FROM_EMAIL=info@jobdistributor.net
-BREVO_FROM_NAME=CodingFlashcard
-FRONTEND_URL=http://localhost:5000
-```
-
-**Note**: The `SECRET_KEY` is required. You can generate one with:
-```python
-import secrets
-print(secrets.token_hex(16))
-```
-
-The `BREVO_API_KEY` is optional - password reset will work but won't send emails without it.
-
-### 3. Run the Application
-
+### Production
 ```bash
+export FLASK_ENV=production
+export FLASK_DEBUG=false
 python app.py
 ```
 
-The application will:
-- Automatically create the SQLite database in `instance/codingflashcard.db`
-- Start the server on `http://localhost:5000`
+Or use a WSGI server like Gunicorn:
+```bash
+pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+```
 
-### 4. Use the Application
+### Daily Email Worker (Optional)
 
-1. Open `http://localhost:5000` in your browser
-2. Register a new account
-3. Click "Add Problem" and paste a Leetcode URL (e.g., `https://leetcode.com/problems/four-divisors/description/`)
-4. The system will automatically extract the problem title and difficulty
-5. View your practice problems on the dashboard
-6. Click "Done" when you've practiced a problem
+To send daily practice reminder emails, run the background worker in a separate terminal:
+```bash
+source venv/bin/activate
+python daily_email_worker.py
+```
+
+This checks every minute and sends emails at each user's configured time.
 
 ## Project Structure
 
 ```
 coding-practice-dashboard/
-├── app.py                 # Main Flask application
-├── models.py              # SQLite database models
-├── utils.py               # Leetcode scraper
-├── requirements.txt       # Python dependencies
-├── templates/             # HTML templates
-│   ├── base.html
-│   ├── login.html
-│   ├── register.html
-│   ├── forgot_password.html
-│   ├── reset_password.html
-│   └── dashboard.html
-├── static/               # CSS files
-│   └── style.css
-└── instance/             # SQLite database (auto-created)
-    └── codingflashcard.db
+├── app.py                    # Application factory
+├── config.py                 # Configuration
+├── extensions.py             # Flask extensions
+├── daily_email_worker.py     # Background email worker
+├── models/                   # Database models
+├── repositories/             # Database queries
+├── services/                 # Business logic
+├── routes/                   # HTTP endpoints
+├── utils/                    # Helpers (scraper, decorators)
+├── templates/                # HTML templates
+├── static/                   # CSS, images
+└── instance/                 # SQLite database (auto-created)
 ```
 
-## Routes
+## Usage
 
-- `GET /` - Dashboard (requires login)
-- `GET /login` - Login page
-- `POST /login` - Process login
-- `GET /register` - Registration page
-- `POST /register` - Process registration
-- `GET /logout` - Logout
-- `GET /forgot-password` - Forgot password page
-- `POST /forgot-password` - Send reset email
-- `GET /reset-password/<token>` - Reset password page
-- `POST /reset-password/<token>` - Process password reset
-- `POST /add-problem` - Add new problem
-- `POST /mark-done/<id>` - Mark problem as practiced
-
-## Advantages
-
-- ✅ Single application (no separate frontend/backend)
-- ✅ No Node.js required
-- ✅ SQLite - no database server needed
-- ✅ Simple deployment
-- ✅ All in Python
-- ✅ Easy to understand and modify
-
-## Notes
-
-- The password reset tokens are stored in the database
-- The Leetcode scraper may need updates if Leetcode changes their page structure
-- SQLite database is created automatically in the `instance/` directory
-- For production, set `debug=False` in `app.py`
-
-## License
-
-MIT
+1. Register an account at `/register`
+2. Log in at `/login`
+3. Click the **+** button to add a Leetcode problem URL
+4. Practice problems shown on the dashboard
+5. Click **Done** after solving a problem
+6. Configure settings (timezone, daily email) in the settings page
