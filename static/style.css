@@ -657,9 +657,158 @@ a {
     color: #262626;
 }
 
+/* Heatmap Section */
+.heatmap-section {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.heatmap-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #262626;
+    margin: 0;
+}
+
+.heatmap-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.heatmap-summary {
+    font-size: 12px;
+    color: #8c8c8c;
+}
+
+.heatmap-container {
+    overflow-x: auto;
+}
+
+.heatmap-months {
+    display: flex;
+    font-size: 11px;
+    color: #8c8c8c;
+    margin-bottom: 4px;
+    margin-left: 32px;
+}
+
+.heatmap-months span {
+    flex: 1;
+    min-width: 52px;
+}
+
+.heatmap-grid-wrapper {
+    display: flex;
+    gap: 4px;
+}
+
+.heatmap-days {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 10px;
+    color: #8c8c8c;
+    padding-top: 0;
+}
+
+.heatmap-days span {
+    height: 11px;
+    line-height: 11px;
+    width: 28px;
+    text-align: right;
+}
+
+.heatmap-grid {
+    display: flex;
+    gap: 3px;
+}
+
+.heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.heatmap-cell {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    background: #ebedf0;
+}
+
+.heatmap-cell.level-0 {
+    background: #ebedf0;
+}
+
+.heatmap-cell.level-1 {
+    background: #9be9a8;
+}
+
+.heatmap-cell.level-2 {
+    background: #40c463;
+}
+
+.heatmap-cell.level-3 {
+    background: #30a14e;
+}
+
+.heatmap-cell.level-4 {
+    background: #216e39;
+}
+
+.heatmap-cell[data-tooltip] {
+    cursor: pointer;
+    position: relative;
+}
+
+.heatmap-cell[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: #262626;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10;
+    margin-bottom: 4px;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.heatmap-legend-label {
+    font-size: 11px;
+    color: #8c8c8c;
+}
+
+.heatmap-legend-scale {
+    display: flex;
+    gap: 2px;
+}
+
 /* Practice Section */
 .practice-problems-section {
-    margin-top: 24px;
+    margin-top: 0;
 }
 
 .section-title {

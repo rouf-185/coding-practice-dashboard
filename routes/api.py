@@ -56,3 +56,20 @@ def get_difficulty_stats():
     
     data = StatsService.get_difficulty_stats(user_id, period)
     return jsonify(data)
+
+
+@api_bp.route('/heatmap-data')
+@require_login
+def get_heatmap_data():
+    """Get daily activity heatmap data."""
+    user_id = session['user_id']
+    now = datetime.utcnow()
+    
+    year = request.args.get('year', default=now.year, type=int)
+    
+    # Validate year
+    if year < 2020 or year > 2100:
+        year = now.year
+    
+    data = StatsService.get_heatmap_data(user_id, year)
+    return jsonify(data)

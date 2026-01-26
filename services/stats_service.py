@@ -156,3 +156,57 @@ class StatsService:
             'hard': hard,
             'period': period
         }
+    
+    @staticmethod
+    def get_heatmap_data(user_id: int, year: int = None) -> Dict[str, Any]:
+        """
+        Get daily activity data for heatmap visualization.
+        
+        Args:
+            user_id: User ID
+            year: Year to get data for (defaults to current year)
+        
+        Returns:
+            Dictionary with date-count mapping and metadata.
+        """
+        if year is None:
+            year = datetime.utcnow().year
+        
+        # Get date range for the year
+        start_date = datetime(year, 1, 1)
+        end_date = datetime(year, 12, 31, 23, 59, 59)
+        
+        # Get all problems for user
+        all_problems = ProblemRepository.get_all_for_user(user_id)
+        
+        # Initialize daily counts
+        daily_counts = {}
+        
+        # Count problems solved (first time) per day
+        for problem in all_problems:
+            if problem.solved_date and start_date <= problem.solved_date <= end_date:
+                date_str = problem.solved_date.strftime('%Y-%m-%d')
+                daily_counts[date_str] = daily_counts.get(date_str, 0) + 1
+        
+        # Also count practice sessions from history
+        history_entries = ProblemRepository.get_history_for_month(
+            user_id, start_date, end_date
+        )
+        for entry in history_entries:
+            date_str = entry.practiced_at.strftime('%Y-%m-%d')
+            daily_counts[date_str] = daily_counts.get(date_str, 0) + 1
+        
+        # Calculate total and streak
+        total_activities = sum(daily_counts.values())
+        active_days = len(daily_counts)
+        
+        # Find max count for scaling
+        max_count = max(daily_counts.values()) if daily_counts else 0
+        
+        return {
+            'year': year,
+            'data': daily_counts,
+            'total_activities': total_activities,
+            'active_days': active_days,
+            'max_count': max_count
+        }
