@@ -38,134 +38,173 @@
     </header>
 
     <main class="dashboard-content">
-        <div class="settings-page">
-            <h2 class="section-title">Settings</h2>
-
-            <div class="settings-grid">
-                <div class="settings-card">
-                    <h3>Profile Picture</h3>
-                    <p class="settings-help">Upload a profile picture. We’ll auto-crop and resize it to a square.</p>
-
-                    <div class="settings-avatar-row">
-                        {% if user.profile_image %}
-                            <img class="settings-avatar-preview" src="{{ url_for('static', filename=user.profile_image) }}" alt="Current profile picture">
-                        {% else %}
-                            <div class="settings-avatar-empty">No photo</div>
-                        {% endif %}
-                    </div>
-
-                    <form method="POST" action="{{ url_for('upload_profile_picture') }}" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <label for="profile_picture">Upload</label>
-                            <input type="file" id="profile_picture" name="profile_picture" accept="image/png,image/jpeg,image/webp" required>
-                        </div>
-                        <button type="submit" class="btn-primary">Upload</button>
-                    </form>
-
-                    {% if user.profile_image %}
-                        <div class="settings-divider"></div>
-                        <form method="POST" action="{{ url_for('delete_profile_picture') }}">
-                            <button type="submit" class="btn-delete">Delete</button>
-                        </form>
-                    {% endif %}
-                </div>
-
-                <div class="settings-card">
-                    <h3>Timezone</h3>
-                    <p class="settings-help">Select your timezone (type to search).</p>
-                    <form method="POST" action="{{ url_for('update_timezone') }}">
-                        <div class="form-group">
-                            <label for="timezone">Timezone</label>
-                            <input
-                                id="timezone"
-                                name="timezone"
-                                list="timezoneList"
-                                value="{{ user.timezone or 'UTC' }}"
-                                placeholder="Start typing, e.g. Asia/Dhaka"
-                                required
-                            >
-                            <datalist id="timezoneList">
-                                {% for tz in timezones %}
-                                    <option value="{{ tz }}"></option>
-                                {% endfor %}
-                            </datalist>
-                        </div>
-                        <button type="submit" class="btn-primary">Update Timezone</button>
-                    </form>
-                </div>
-
-                <div class="settings-card">
-                    <h3>Daily Practice Email</h3>
-                    <p class="settings-help">
-                        We’ll email your “Problems to Practice Today” list at your local time (based on the timezone above).
-                    </p>
-                    <form method="POST" action="{{ url_for('update_daily_email_settings') }}">
-                        <div class="form-group">
-                            <label style="display:flex;align-items:center;gap:10px;">
-                                <input type="checkbox" name="daily_email_enabled" {% if user.daily_email_enabled %}checked{% endif %}>
-                                Enable daily email
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="daily_email_time">Send time</label>
-                            <input type="time" id="daily_email_time" name="daily_email_time" value="{{ user.daily_email_time or '06:00' }}" required>
-                        </div>
-                        <button type="submit" class="btn-primary">Save Email Settings</button>
-                    </form>
-                </div>
-
-                <div class="settings-card">
-                    <h3>Change Username</h3>
-                    <p class="settings-help">Update your username (must be available).</p>
-                    <form method="POST" action="{{ url_for('update_username') }}">
-                        <div class="form-group">
-                            <label for="username">Username</label>
-                            <input type="text" id="username" name="username" value="{{ user.username }}" required>
-                        </div>
-                        <button type="submit" class="btn-primary">Update Username</button>
-                    </form>
-                </div>
-
-                <div class="settings-card">
-                    <h3>Change Email</h3>
-                    <p class="settings-help">
-                        To change your email, we’ll send a verification code to your <b>current</b> email and your <b>new</b> email.
-                        Codes expire in 10 minutes.
-                    </p>
-
-                    <div class="settings-current-email">
-                        <span class="settings-label">Current email:</span>
-                        <span class="settings-value">{{ user.email }}</span>
-                    </div>
-
-                    <form method="POST" action="{{ url_for('request_email_change') }}">
-                        <div class="form-group">
-                            <label for="new_email">New Email</label>
-                            <input type="email" id="new_email" name="new_email" placeholder="new@email.com" required>
-                        </div>
-                        <button type="submit" class="btn-primary">Send Verification Codes</button>
-                    </form>
-
-                    {% if pending_email_change %}
-                        <div class="settings-divider"></div>
-                        <h4>Confirm Email Change</h4>
-                        <p class="settings-help">
-                            We sent codes to <b>{{ pending_email_change.current_email }}</b> and <b>{{ pending_email_change.new_email }}</b>.
-                        </p>
-                        <form method="POST" action="{{ url_for('confirm_email_change') }}">
-                            <div class="form-group">
-                                <label for="current_email_code">Code from current email</label>
-                                <input type="text" id="current_email_code" name="current_email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="new_email_code">Code from new email</label>
-                                <input type="text" id="new_email_code" name="new_email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
-                            </div>
-                            <button type="submit" class="btn-primary">Confirm Email Change</button>
-                        </form>
-                    {% endif %}
-                </div>
+        <div class="settings-page-new">
+            <!-- Settings Header -->
+            <div class="settings-header">
+                <h1 class="settings-title">Settings</h1>
+                <p class="settings-subtitle">Manage your account preferences</p>
             </div>
+
+            <!-- Profile Section -->
+            <section class="settings-section">
+                <div class="settings-section-header">
+                    <span class="settings-section-icon">👤</span>
+                    <div>
+                        <h2 class="settings-section-title">Profile</h2>
+                        <p class="settings-section-desc">Your public information</p>
+                    </div>
+                </div>
+                <div class="settings-section-body">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Profile Picture</div>
+                            <div class="settings-row-hint">Square image, auto-resized to 256×256</div>
+                        </div>
+                        <div class="settings-row-action">
+                            <div class="settings-avatar-group">
+                                {% if user.profile_image %}
+                                    <img class="settings-avatar-lg" src="{{ url_for('static', filename=user.profile_image) }}" alt="Profile">
+                                {% else %}
+                                    <div class="settings-avatar-placeholder">?</div>
+                                {% endif %}
+                                <div class="settings-avatar-buttons">
+                                    <form method="POST" action="{{ url_for('upload_profile_picture') }}" enctype="multipart/form-data" class="settings-inline-form">
+                                        <label class="btn-outline btn-sm">
+                                            Upload
+                                            <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp" hidden onchange="this.form.submit()">
+                                        </label>
+                                    </form>
+                                    {% if user.profile_image %}
+                                        <form method="POST" action="{{ url_for('delete_profile_picture') }}" class="settings-inline-form">
+                                            <button type="submit" class="btn-ghost btn-sm btn-danger">Remove</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Username</div>
+                            <div class="settings-row-hint">Your unique identifier</div>
+                        </div>
+                        <div class="settings-row-action">
+                            <form method="POST" action="{{ url_for('update_username') }}" class="settings-inline-form">
+                                <input type="text" name="username" value="{{ user.username }}" class="settings-input" required>
+                                <button type="submit" class="btn-outline btn-sm">Update</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Preferences Section -->
+            <section class="settings-section">
+                <div class="settings-section-header">
+                    <span class="settings-section-icon">⚙</span>
+                    <div>
+                        <h2 class="settings-section-title">Preferences</h2>
+                        <p class="settings-section-desc">Customize your experience</p>
+                    </div>
+                </div>
+                <div class="settings-section-body">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Timezone</div>
+                            <div class="settings-row-hint">Used for scheduling and display</div>
+                        </div>
+                        <div class="settings-row-action">
+                            <form method="POST" action="{{ url_for('update_timezone') }}" class="settings-inline-form">
+                                <input
+                                    type="text"
+                                    name="timezone"
+                                    list="timezoneList"
+                                    value="{{ user.timezone or 'UTC' }}"
+                                    placeholder="e.g. Asia/Dhaka"
+                                    class="settings-input"
+                                    required
+                                >
+                                <datalist id="timezoneList">
+                                    {% for tz in timezones %}
+                                        <option value="{{ tz }}"></option>
+                                    {% endfor %}
+                                </datalist>
+                                <button type="submit" class="btn-outline btn-sm">Update</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Daily Practice Email</div>
+                            <div class="settings-row-hint">Get your practice list every day</div>
+                        </div>
+                        <div class="settings-row-action">
+                            <form method="POST" action="{{ url_for('update_daily_email_settings') }}" class="settings-inline-form settings-email-form">
+                                <label class="settings-toggle">
+                                    <input type="checkbox" name="daily_email_enabled" {% if user.daily_email_enabled %}checked{% endif %}>
+                                    <span class="settings-toggle-slider"></span>
+                                </label>
+                                <div class="settings-time-group">
+                                    <span class="settings-time-label">at</span>
+                                    <input type="time" name="daily_email_time" value="{{ user.daily_email_time or '06:00' }}" class="settings-input settings-input-time" required>
+                                </div>
+                                <button type="submit" class="btn-outline btn-sm">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Account Section -->
+            <section class="settings-section">
+                <div class="settings-section-header">
+                    <span class="settings-section-icon">🔒</span>
+                    <div>
+                        <h2 class="settings-section-title">Account</h2>
+                        <p class="settings-section-desc">Security and authentication</p>
+                    </div>
+                </div>
+                <div class="settings-section-body">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Email Address</div>
+                            <div class="settings-row-hint">{{ user.email }}</div>
+                        </div>
+                        <div class="settings-row-action">
+                            {% if not pending_email_change %}
+                                <form method="POST" action="{{ url_for('request_email_change') }}" class="settings-inline-form">
+                                    <input type="email" name="new_email" placeholder="new@email.com" class="settings-input" required>
+                                    <button type="submit" class="btn-outline btn-sm">Change</button>
+                                </form>
+                            {% else %}
+                                <div class="settings-pending-change">
+                                    <div class="settings-pending-badge">Pending verification</div>
+                                    <form method="POST" action="{{ url_for('confirm_email_change') }}" class="settings-verify-form">
+                                        <div class="settings-verify-inputs">
+                                            <input type="text" name="current_email_code" placeholder="Code (current)" class="settings-input settings-input-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+                                            <input type="text" name="new_email_code" placeholder="Code (new)" class="settings-input settings-input-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+                                        </div>
+                                        <button type="submit" class="btn-outline btn-sm">Verify</button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <div class="settings-row-label">Password</div>
+                            <div class="settings-row-hint">Last changed: unknown</div>
+                        </div>
+                        <div class="settings-row-action">
+                            <a href="{{ url_for('change_password') }}" class="btn-outline btn-sm">Change Password</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </div>
     </main>
 </div>
@@ -200,4 +239,3 @@ document.addEventListener('keydown', (e) => {
 });
 </script>
 {% endblock %}
-
